@@ -221,7 +221,7 @@ vim.cmd('command! CclsLog execute ":e '.. log_path .. '"')
 ```
 
 A crystal ball somewhere is telling of a need to push changes to subscribers
-when a plugin is loaded. But so far this query API does the trick.
+when a project is loaded. But so far this query API does the trick.
 
 ## Startify screen
 
