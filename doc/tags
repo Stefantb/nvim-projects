@@ -1,0 +1,10 @@
+projects	projects.txt	/*projects*
+projects-:PBuild	projects.txt	/*projects-:PBuild*
+projects-:PBuildCancel	projects.txt	/*projects-:PBuildCancel*
+projects-:PBuildSetDefault	projects.txt	/*projects-:PBuildSetDefault*
+projects-:PClose	projects.txt	/*projects-:PClose*
+projects-:PDelete	projects.txt	/*projects-:PDelete*
+projects-:PEdit	projects.txt	/*projects-:PEdit*
+projects-:POpen	projects.txt	/*projects-:POpen*
+projects-commands	projects.txt	/*projects-commands*
+projects.txt	projects.txt	/*projects.txt*

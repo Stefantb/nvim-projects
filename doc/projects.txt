@@ -1,0 +1,61 @@
+*projects.txt*  Project settings and build tasks for Neovim.
+
+Author:  Stefan Thor Bjarnason.
+Repo:    https://github.com/Stefantb/nvim-projects
+License: MIT. (See license in repository root.)
+
+INTRODUCTION                                    *projects*
+
+Provide the concept of a project explicitly to Neovim. 
+
+Let's have projects like we might be used to in other editor such as 
+Sublime Text, Visual Studio Code, and so many others.
+
+Let's keep the projects in a single directory outside of the source tree.
+
+The projects plugin can be a provider of information for other plugins and
+your own config. Like if you need to explicitly set the LSP root to a
+directory that is not the repository root.
+
+Sessions are great, lets use them, but lets have the project setting loaded
+before sessions are loaded. That way the LSP's are set up right before buffers
+are loaded.
+
+Let's define a bunch of build tasks that are project specific and globally
+applicable and lets easily switch between them.
+
+Are you with me? Let's go.
+
+
+COMMANDS                                        *projects-commands*
+
+                                                *projects-:PEdit*
+:PEdit [project_name]   Edit a project file for a project that already exists
+                        or provide a name for a new file to create and edit.
+
+                                                *projects-:POpen*
+:POpen [project_name]   Open an existing project.
+
+                                                *projects-:PDelete*
+:PDelete [project_name] Delete the project file for a project that exists.
+                        Note that the associated session will not be deleted
+                        automatically.
+
+                                                *projects-:PClose*
+:PClose                 Close the current project.
+
+                                                *projects-:PBuild*
+:PBuild [task_name]     Start a build with a configured task.
+                        If no task name is given, the default task is run.
+                        Tasks can be configured per project in the project file
+                        or globally using the setup method.
+
+                                                *projects-:PBuildSetDefault*
+:PBuildSetDefault       Set the default build task.
+
+                                                *projects-:PBuildCancel*
+:PBuildCancel           Cancel a running build. Only available if the build executor
+                        provides a way to cancel a build.
+
+
+ vim:tw=78:et:ft=help:norl:
