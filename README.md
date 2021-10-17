@@ -11,17 +11,19 @@ Until recently life without projects has been working great. I discovered [vim-s
 which made life pretty great for a while, it made working with sessions a wonderful experience
 and I could come back to my projects with ease.
 
-But then I started to work on a project that is organized like a monorepo and when working on that,
+But then I started to work on a project that is organized as a monorepo. When working on that,
 I want vim's working directory to stay at the repository root so project wide searches work
-and my project drawer can show me what I want. But at the same time the projects are really
-inside a subfolder and I want the LSP root to be there.
+and my project drawer can show me what I want. But at the same time I want the LSP root to be
+pointing to a subfolder, containing the sub project I am working on.
 
 Why is that important?
 
 Well I want ccls to create isolated caches for each project, because although they mostly
 build the same sources, preprocessor definitions and build flags are very different.
 It does get tired to clear the cache each time I switch projects. 
-(So ccls will use the root its given to distinguish the cache).
+(The thing is here that ccls uses the path to the root its given, to distinguish the cache).
+We could also just tell ccls where to store the cache on a per project basis, but that does
+not remove the need for a per project configuration.
 
 I have also been very content with running builds in a terminal besides my editor and that
 works fine. I do miss running them in the editor for when things go wrong and I get the errors in
@@ -29,7 +31,9 @@ the quick fix list.
 
 Oh and of course, builds should be asynchronous.
 
-I want nice things and here we are.
+And I dont want to mess with `exrc`.
+
+I want nice things and here we are. You to maybe ?
 
 
 ## What are the features
@@ -53,7 +57,7 @@ There is also an experimental integration for [yabs](https://github.com/pianocom
 
 There is a good chance that you are able to transparently use any build system using the 
 same integration as dispatch, shown in the examples below. It simply relies on calling 
-vim commands.
+vim commands specified in the config.
 
 
 ## Installation
@@ -216,6 +220,9 @@ vim.cmd('command! ClearCclsCache execute ":! rm -r '.. cache_dir .. '/*"')
 vim.cmd('command! CclsLog execute ":e '.. log_path .. '"')
 ```
 
+A crystal ball somewhere is telling of a need to push changes to subscribers
+when a plugin is loaded. But so far this query API does the trick.
+
 ## Startify screen
 
 Here is how I configure startify. This `ProjectList` function returns the right 
@@ -236,4 +243,7 @@ let g:startify_lists = [
           \ ]
 
 ```
+
+## Roadmap And Contribution
+
 
