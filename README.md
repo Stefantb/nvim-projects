@@ -1,6 +1,6 @@
 # nvim-projects
 
-A neovim plugin to provide the concept of a project to the experience.
+A neovim plugin to provide the concept of a project.
 
 ## Why A Project Plugin
 
@@ -33,23 +33,37 @@ Oh and of course, builds should be asynchronous.
 
 And I dont want to mess with `exrc`.
 
-I want nice things and here we are. You to maybe ?
+I want nice things and here we are.
 
 
 ## What are the features
 
-- [X] Commands to create, edit, delete and load projects.
-- [X] Keep the project files outside the source repositories.
-- [X] Commands to run build tasks, cancel builds and easily swicth the default task.
+The idea is to make a very small and simple plugin that basically just
+manages CRUD for a project and hopefully creates a foundation that can be
+built upon. In the end users should just be able to quickly and easily add
+whatever they want to the project and be able to retreive the information
+when they want.
+
+The basic project infrastructure does the following:
+- [X] Commands to create, edit, delete, load and close projects.
+- [X] Keep the project files in a configurable location outside
+      the source repositories.
+- [X] The ability to keep persistent state with each project.
 - [X] Associated sessions with each project managed by [vim-startify](https://github.com/mhinz/vim-startify)
 - [X] Easy integration to show projects listed on the startify screen.
+- [ ] An api to plug in sub plugins like build tasks.
 - [o] An API for other plugins (my config) to query the current project.
-    - [X] A very minimalist and restricted set of query functions that do what I need.
+    - [X] A very minimalist and restricted set of query functions that do
+          what I need.
     - [ ] Something more?
 
+Immediately building upon this base is the buit in build managent:
+managent:
+- [X] Commands to run build tasks, cancel builds and easily swicth the
+      default task.
+- [X] Provide a schema for declaring build tasks.
+- [ ] Merge global and per project build tasks to presenting to the user.
 
-Its not the intention to create a behemoth thing that does everything, but rather try to 
-make little glue layer in the middle that just helps things work uniformly.
 
 Let's rely on startify to manage sessions. And it is best to use some other great plugins for 
 running builds. I recommend [vim-dispatch](https://github.com/tpope/vim-dispatch) for that.
@@ -227,8 +241,6 @@ when a project is loaded. But so far this query API does the trick.
 
 Here is how I configure startify. This `ProjectList` function returns the right 
 datastructure so all the available projects can be listed.
-
-Thanks `mhinz` for making your plugin so easy to integrate with.
 
 ``` vim
 

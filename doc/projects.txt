@@ -6,7 +6,7 @@ License: MIT. (See license in repository root.)
 
 INTRODUCTION                                    *projects*
 
-Provide the concept of a project explicitly to Neovim. 
+Provide the concept of a project to Neovim.
 
 Let's have projects like we might be used to in other editor such as 
 Sublime Text, Visual Studio Code, and so many others.
@@ -23,8 +23,6 @@ are loaded.
 
 Let's define a bunch of build tasks that are project specific and globally
 applicable and lets easily switch between them.
-
-Are you with me? Let's go.
 
 
 COMMANDS                                        *projects-commands*
