@@ -40,7 +40,7 @@ I want nice things and here we are.
 
 The idea is to make a very small and simple plugin that basically just
 manages CRUD for a project and hopefully creates a foundation that can be
-built upon. In the end users should just be able to quickly and easily add
+built upon. In the end, users should just be able to quickly and easily add
 whatever they want to the project and be able to retreive the information
 when they want.
 
@@ -51,18 +51,17 @@ The basic project infrastructure does the following:
 - [X] The ability to keep persistent state with each project.
 - [X] Associated sessions with each project managed by [vim-startify](https://github.com/mhinz/vim-startify)
 - [X] Easy integration to show projects listed on the startify screen.
-- [ ] An api to plug in sub plugins like build tasks.
+- [X] Plug in API for extending functionality, build tasks is a showcase for this.
 - [o] An API for other plugins (my config) to query the current project.
     - [X] A very minimalist and restricted set of query functions that do
           what I need.
     - [ ] Something more?
 
-Immediately building upon this base is the buit in build managent:
-managent:
+Immediately building upon this base, is the built in build management:
 - [X] Commands to run build tasks, cancel builds and easily swicth the
       default task.
 - [X] Provide a schema for declaring build tasks.
-- [ ] Merge global and per project build tasks to presenting to the user.
+- [X] Merge global and per project build tasks, for presenting to the user.
 
 
 Let's rely on startify to manage sessions. And it is best to use some other great plugins for 
