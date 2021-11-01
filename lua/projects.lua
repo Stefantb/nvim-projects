@@ -263,7 +263,7 @@ function M.config()
 end
 
 function M.current_project()
-    return utils.read_only(current_project)
+    return current_project
 end
 
 function M.current_project_or_empty()
