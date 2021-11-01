@@ -1,40 +1,51 @@
 local persistent = require'projects.persistent'
 local utils = require'projects.utils'
+local plugins = require'projects.plugins'
+local sessions = require'projects.sessions_startify'
 
 
 -- ****************************************************************************
--- Keep some state away from direct access through M.
+--
 -- ****************************************************************************
-local config = {
-    project_dir          = "~/.config/nvim/projects/",
-    silent               = false,
-    current_project      = {},
-    current_project_name = '',
-    build_tasks          = {},
-    plugins              = {},
-}
+local current_project = nil
+local config = {}
 
-
--- ****************************************************************************
--- Plugin setup.
--- ****************************************************************************
-local M = {}
-
-function M.setup(opts)
-    if opts then
-        for k, v in pairs(opts) do
-            config[k] = v
-        end
-    end
-    config.persistent = persistent:create(config.project_dir .. '/__projects__.json')
-    require'projects.builds'.setup()
+local function default_config()
+    return {
+        project_dir  = "~/.config/nvim/projects/",
+        silent       = false,
+        plugins      = { builds = true
+        }
+    }
 end
 
+-- ****************************************************************************
+-- Plugin management
+-- ****************************************************************************
+local function builtin_plugins()
+    return {
+        builds = require'projects.builds'.plugin
+    }
+end
+
+local function init_plugins(plug_config, host)
+    plugins.init()
+
+    local builtin = builtin_plugins()
+    for plugin_name, value in pairs(plug_config) do
+        if value ~= false then
+            if builtin[plugin_name] then
+                plugins.register_plugin(builtin[plugin_name], host)
+            else
+                print('no built in project plugin ' .. plugin_name)
+            end
+        end
+    end
+end
 
 -- ****************************************************************************
 -- Utilities
 -- ****************************************************************************
-
 local function ensure_projects_dir()
     return utils.ensure_dir(config.project_dir)
 end
@@ -47,45 +58,48 @@ local function project_persistent_path(project_name)
     return config.project_dir .. '/' .. project_name .. '.json'
 end
 
-
--- ****************************************************************************
--- Sessions interface relying on Startify
--- ****************************************************************************
-local sessions = {}
-
-function sessions.try_close_current()
-    vim.cmd('execute \'SClose\'')
-end
-
-function sessions.load(session_name)
-    if session_name and session_name ~= "" then
-        vim.cmd('execute \'SLoad ' .. session_name .. '\'')
-    end
-end
-
-function sessions.exists(session_name)
-    if session_name and session_name ~= "" then
-        local list = vim.fn['startify#session_list']('')
-        return utils.is_in_list(list, session_name)
-    end
-    return false
-end
-
-function sessions.save(session_name)
-    if session_name and session_name ~= "" then
-        vim.cmd('execute \'SSave ' .. session_name .. '\'')
-    end
-end
-
-function sessions.delete(session_name)
-    if session_name and session_name ~= "" then
-        vim.cmd('execute \'SDelete ' .. session_name .. '\'')
-    end
+local function empty(string)
+    return string == nil or string == ''
 end
 
 
 -- ****************************************************************************
--- Project helpers
+-- Project object
+-- ****************************************************************************
+local Project = {}
+
+function Project:new(data)
+    data = data or {}
+    setmetatable(data, self)
+    self.__index = self
+    return data
+end
+
+function Project:get_sub(key, sub_key, default)
+    if self[key] then
+        if self[key][sub_key] then
+            return self['lsp_root'][sub_key]
+        end
+    elseif config[key] then
+        if config[key][sub_key] then
+            return config[key][sub_key]
+        end
+    end
+    return default
+end
+
+function Project:get(key, default)
+    if self[key] then
+        return self[key]
+    elseif config[key] then
+        return config[key]
+    end
+    return default
+end
+
+
+-- ****************************************************************************
+-- Project management
 -- ****************************************************************************
 local function project_list()
     local dir = ensure_projects_dir()
@@ -101,23 +115,21 @@ local function project_list()
             local striped_name = name:match('(.+)%.lua$')
             if striped_name and striped_name ~= '' then
                 projects[#projects+1] = striped_name
-                -- projects[striped_name] = striped_name
             end
         end
     end
     return projects
 end
 
-
-local function is_project_root_ok(settings)
+local function is_project_root_ok(project)
     local is_ok = true
-    if settings.project_root then
-        if not vim.loop.fs_access(settings.project_root, 'r') then
-            vim.notify('project_root is not accessible: ' .. settings.project_root)
+    if project.root_dir then
+        if not vim.loop.fs_access(project.root_dir, 'r') then
+            vim.notify('root_dir is not accessible: ' .. project.root_dir)
             is_ok = false
         end
     else
-        vim.notify('project_root must be set !')
+        vim.notify('root_dir must be set !')
         is_ok = false
     end
 
@@ -125,37 +137,37 @@ local function is_project_root_ok(settings)
 end
 
 local function activate_project(project)
-    config.current_project = project
-    config.current_project_name = project.project_name
+    -- 1. assign the current project.
+    current_project = project
 
-    local settings = project.settings
-
-    sessions.try_close_current()
-    if settings.session then
-        if sessions.exists(settings.session) then
-            sessions.load(settings.session)
+    -- 2. open the associated session.
+    sessions.close()
+    if project.session_name then
+        if sessions.exists(project.session_name) then
+            sessions.load(project.session_name)
         else
-            sessions.save(settings.session)
+            sessions.save(project.session_name)
         end
     end
 
-    vim.cmd('execute \'cd ' .. settings.project_root .. '\'')
+    -- 3. cd to the project root.
+    vim.cmd('execute \'cd ' .. project.root_dir .. '\'')
 
-    if config.current_project.on_load then
-        config.current_project.on_load()
+    -- 4. call project on load.
+    if project.on_load then
+        project.on_load()
     end
 
-    for _, plugin_handlers in pairs(config.plugins) do
-        if plugin_handlers.on_load then
-            plugin_handlers.on_load()
-        end
-    end
+    -- 5. call plugins on load.
+    plugins.publish_event('on_load', current_project)
 
+    -- 6. restart lsp TODO probably remove
     vim.defer_fn(utils.restart_lsp, 50)
 
+    -- 7. notify user.
     if config.silent == false then
         vim.defer_fn(function()
-            vim.notify('[project-config] - ' .. M.current_project_name())
+            vim.notify('[project-config] - ' .. project.name)
         end, 100)
     end
 end
@@ -163,61 +175,67 @@ end
 local function load_project(project_name)
     ensure_projects_dir()
 
-    if project_name then
+    if empty(project_name) then
+        return nil
+    end
 
-        local file_path = project_path(project_name)
-        local project_data = dofile(file_path)
+    local file_path = project_path(project_name)
+    local project_data = dofile(file_path)
 
-        if project_data then
-            -- set some defaults
-            project_data.project_name = project_name
-            project_data.persistent = persistent:create(project_persistent_path(project_name))
+    if project_data then
+        local project = Project:new(project_data)
+        -- set some defaults
+        project.name = project_name
+        project.persistent = persistent:create(project_persistent_path(project_name))
 
-            if not project_data.settings.session then
-                project_data.settings.session = project_data.project_name
-            end
+        if not project.session_name then
+            project.session_name = project.name
+        end
 
-            -- print(vim.inspect(project_data))
-            if is_project_root_ok(project_data.settings) then
-                return project_data
-            end
+        -- print(vim.inspect(project))
+        if is_project_root_ok(project) then
+            return project
         end
     end
     return nil
 end
 
 local project_template = [[
-local M = {}
-
-M.settings = {
-    project_root = 'This is mandatory.',
-    -- lsp_root = 'string for a global default, or a table with entries for languages.',
+local M = {
+    root_dir = 'This is mandatory.',
     -- lsp_root = {
-        -- cpp = 'some path'
+        -- sub_key = 'some path'
     -- }
-    -- session = 'defaults to project name.'
-}
+    -- session_name = 'defaults to project name.'
 
-M.build_tasks = {
-    task_name = {
-        executor     = 'vim',
-        compiler     = 'gcc',
-        makeprg      = 'make',
-        command      = 'Make release',
-        abortcommand = 'AbortDispatch'
+    build_tasks = {
+        task_name = {
+            executor     = 'vim',
+            compiler     = 'gcc',
+            makeprg      = 'make',
+            command      = 'Make release',
+            abortcommand = 'AbortDispatch'
 
-    },
-    task_name2 = {
-        executor = 'yabs',
-        command = 'gcc main.c -o main',
-        output = 'quickfix',
-        opts = {
+        },
+        task_name2 = {
+            executor = 'yabs',
+            command = 'gcc main.c -o main',
+            output = 'quickfix',
+            opts = {
+            },
         },
     },
+    plugins = {
+        'projects.builds'
+    },
 }
 
-M.on_load = function()
-    vim.opt.makeprg = 'make -C m1200'
+function M.on_load()
+    vim.opt.makeprg = 'make'
+end
+
+function M.on_close()
+    print('Goodbye then.')
 end
 return M
 ]]
@@ -226,16 +244,38 @@ return M
 -- ****************************************************************************
 -- Public API
 -- ****************************************************************************
-function M.global()
+local M = {}
+
+function M.setup(opts)
+    config = utils.merge_first_level(default_config(), opts)
+
+    config.persistent = persistent:create(config.project_dir .. '/__projects__.json')
+    init_plugins(config.plugins, M)
+
+    -- allow a little more introspection during testing.
+    if config.testing then
+        M.plugins = plugins.plugins
+        M.project_activate = activate_project
+    end
+end
+
+function M.register_plugin(plugin)
+    plugins.register_plugin(plugin, M)
+end
+
+function M.config()
     return utils.read_only(config)
 end
 
 function M.current_project()
-    return utils.read_only(config.current_project)
+    return utils.read_only(current_project)
 end
 
-function M.register_plugin(plugin_name, plug)
-    config.plugins[plugin_name] = plug
+function M.current_project_or_empty()
+    if not current_project then
+        return Project:new()
+    end
+    return M.current_project()
 end
 
 function M.project_open(project_name)
@@ -244,37 +284,39 @@ function M.project_open(project_name)
         project_name = utils.prompt_selection(projects)
     end
 
-    if project_name and project_name ~= '' then
-        if config.current_project_name ~= '' then
-            M.project_close()
-        end
+    if empty(project_name) then
+        return
+    end
 
-        local project_data = load_project(project_name)
-        activate_project(project_data)
+    if current_project then
+        M.project_close()
+    end
+
+    local project = load_project(project_name)
+    if project then
+        activate_project(project)
         config.persistent:set('last_loaded_project', project_name)
+    else
+        print('Unable to load project: ' .. project_name)
     end
 end
 
 function M.project_close()
-    if config.current_project_name == '' then
+    if not current_project then
         return
     end
 
-    print('closing: ' .. config.current_project.project_name)
-
-    for _, plugin_handlers in pairs(config.plugins) do
-        if plugin_handlers.on_close then
-            plugin_handlers.on_close()
-        end
+    if not config.silent then
+        print('closing: ' .. current_project.name)
     end
 
-    if config.current_project.on_close then
-        config.current_project.on_close()
+    if current_project.on_close then
+        current_project.on_close()
     end
+    plugins.publish_event('on_close', current_project)
 
-    -- remove the project specific build tasks
-    config.current_project = {}
-    config.current_project_name = ''
+    sessions.close()
+    current_project = nil
 end
 
 function M.project_delete(project_name)
@@ -283,42 +325,44 @@ function M.project_delete(project_name)
         print('no project named: ' .. project_name)
     end
 
-    if project_name and project_name ~= '' then
-        print('Really delete ' .. project_name .. ' ? [y/n]')
-        local answer = vim.fn.nr2char(vim.fn.getchar())
-        if answer == 'y' then
-             -- close project if currently open
-             if config.current_project.project_name == project_name then
-                 M.project_close()
-             end
-            local project_data = load_project(project_name)
-            local file_path = project_path(project_name)
-            if vim.fn.delete(file_path) == 0 then
-                -- delete project json file
-                local pers_path = project_persistent_path(project_name)
-                vim.fn.delete(pers_path)
+    if empty(project_name) then
+        return
+    end
 
-                -- delete session
-                print('Delete associated session ' .. project_data.settings.session .. ' ? [y/n]')
-                if answer == 'y' then
-                    sessions.delete(project_data.settings.session)
-                end
-                print('Deleted ' .. project_name)
-            else
-                print('Deletion failed!')
+    print('Really delete ' .. project_name .. ' ? [y/n]')
+    local answer = vim.fn.nr2char(vim.fn.getchar())
+    if answer == 'y' then
+         -- close project if currently open
+         if current_project.name == project_name then
+             M.project_close()
+         end
+        local project_data = load_project(project_name)
+        local file_path = project_path(project_name)
+        if vim.fn.delete(file_path) == 0 then
+            -- delete project json file
+            local pers_path = project_persistent_path(project_name)
+            vim.fn.delete(pers_path)
+
+            -- delete session
+            print('Delete associated session: ' .. project_data.session_name .. ' ? [y/n]')
+            if answer == 'y' then
+                sessions.delete(project_data.session_name)
             end
+            print('Deleted ' .. project_name)
+        else
+            print('Deletion failed!')
         end
     end
 end
 
 function M.project_edit(project_name)
     if not project_name or project_name == '' then
-        project_name = config.current_project_name
+        project_name = current_project.name
     end
 
     local projects = project_list()
 
-    if project_name == '' then
+    if empty(project_name) then
         project_name = utils.prompt_selection(projects)
     end
 
@@ -332,8 +376,6 @@ function M.project_edit(project_name)
         if is_new then
             local buf = vim.api.nvim_get_current_buf()
             vim.api.nvim_buf_set_lines(buf, 0, -1, false, utils.split_newlines(project_template))
-            -- vim.defer_fn(function()
-            -- end, 500)
         end
     end
 end
@@ -355,21 +397,6 @@ function M.projects_startify_list()
         }
     end
     return list
-end
-
--- ****************************************************************************
---
--- ****************************************************************************
-function M.get_project_root()
-    return M.current_project().project_root
-end
-
-function M.get_lsp_root(language, default)
-    return M.current_project().lsp_root
-end
-
-function M.current_project_name()
-    return M.current_project().project_name
 end
 
 return M

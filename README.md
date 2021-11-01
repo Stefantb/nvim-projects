@@ -39,10 +39,9 @@ I want nice things and here we are.
 ## What are the features
 
 The idea is to make a very small and simple plugin that basically just
-manages CRUD for a project and hopefully creates a foundation that can be
-built upon. In the end, users should just be able to quickly and easily add
-whatever they want to the project and be able to retreive the information
-when they want.
+manages CRUD for a project and creates a simple foundation that can be
+built upon. It should be quite transparent how you can add data on
+a global level, and or per project and then retreive the data.
 
 The basic project infrastructure does the following:
 - [X] Commands to create, edit, delete, load and close projects.
@@ -52,10 +51,7 @@ The basic project infrastructure does the following:
 - [X] Associated sessions with each project managed by [vim-startify](https://github.com/mhinz/vim-startify)
 - [X] Easy integration to show projects listed on the startify screen.
 - [X] Plug in API for extending functionality, build tasks is a showcase for this.
-- [o] An API for other plugins (my config) to query the current project.
-    - [X] A very minimalist and restricted set of query functions that do
-          what I need.
-    - [ ] Something more?
+- [X] An API for other plugins (my config) to query the current project.
 
 Immediately building upon this base, is the built in build management:
 - [X] Commands to run build tasks, cancel builds and easily swicth the
@@ -90,17 +86,20 @@ use {
 
 ## Usage
 
-Its enough to call setup with an empty table. The defaults you can override are shown in the 
+Initialize the global settings by calling setup.
+Its enough to call setup with an empty table. The defaults you can override are shown in the
 example and this is also the place to add globally available build tasks, more on them later.
+We also see a way to add plugins to the project, build management is implemented as a plugin,
+it can be disabled by passing `{builds = false}` as the initializer.
 
 ``` lua
 require("projects").setup{
-    project_dir = "~/.config/nvim/projects/",
-    silent      = false,
-    -- build_tasks = {
-    --     task_one = { ... },
-    --     task_two = { ... },
-    -- },
+    project_dir          = "~/.config/nvim/projects/",
+    silent               = false,
+    plugins = {
+        builds = function() require'projects.builds'.setup() end
+    },
+    build_tasks          = {},
 }
 
 ```
@@ -137,66 +136,107 @@ There are no default keybindings so that is up to the user.
 ```
 ### Built in help
 
+Remember to try this.
 ``` vim
 :h projects
 ```
 
 ### The Project File
 
-When you create a new project a buffer will pop up with a template for a project you can
-edit to your hearts content.
+When you create a new project a buffer will open with a template for
+a project you can edit to your hearts content and then save.
 
 Here we see the way build tasks are defined and an example of how vim-dispatch and yabs can be used.
 They are distinguished by the executor key.
 
-The `on_load` function will be called when a project is loaded, but a symmetrical `on_close` is 
-not available.
+The `on_load` function, if defined, will be called when a project is loaded, and similarly `on_close` is
+called when the project is closed.
 
 ``` lua
-local M = {}
-
-M.settings = {
-    project_root = 'This is mandatory.',
-    -- lsp_root = 'string for a global default, or a table with entries for languages.',
+local M = {
+    root_dir = 'This is mandatory.',
     -- lsp_root = {
-        -- cpp = 'some path'
+        -- sub_key = 'some path'
     -- }
-    -- session = 'defaults to project name.'
-}
+    -- session_name = 'defaults to project name.'
 
-M.build_tasks = {
-    task_name = {
-        executor     = 'vim',
-        compiler     = 'gcc',
-        makeprg      = 'make -C mysubfolder',
-        -- errorformat  = 'you will probably never have to use this'
-        command      = 'Make release',
-        abortcommand = 'AbortDispatch'
+    build_tasks = {
+        task_name = {
+            executor     = 'vim',
+            compiler     = 'gcc',
+            makeprg      = 'make',
+            command      = 'Make release',
+            abortcommand = 'AbortDispatch'
 
-    },
-    task_name2 = {
-        executor = 'yabs'
-        command = 'gcc main.c -o main',
-        output = 'quickfix',
-        opts = {
         },
-    },
+        task_name2 = {
+            executor = 'yabs',
+            command = 'gcc main.c -o main',
+            output = 'quickfix',
+            opts = {
+            },
+        },
+    }
 }
 
-M.on_load = function()
-    vim.opt.makeprg = 'make -C mysubfolder'
-    vim.opt.expandtab = false  -- this project uses tabs ... grrr.
+function M.on_load()
+    vim.opt.makeprg = 'make'
+end
+
+function M.on_close()
+    print('Goodbye then.')
 end
 return M
+
 ```
+
+## Plugin API
+
+Plugins can register themselves using the `register_plugin` function.
+This simply subscribes functions to receiving the `on_load` and `on_close` callbacks.
+
+``` lua
+require("projects").register_plugin{
+    name = 'name',
+    on_load = somefunc,
+    on_close = somefunc
+}
+```
+After receiving the events the query API can be used to access the project data.
 
 ## Query API
 
-So far just this:
+
 ``` lua
-require("projects").get_project_root()
-require("projects").current_project_name()
-require("projects").get_lsp_root(language, default)
+
+-- Retreive the current global configuration as a table.
+require("projects").config()
+
+-- The following return the project as an object that has some convenience methods.
+
+-- Retreive the project object or nil if no project is open.
+require("projects").current_project()
+
+-- Retreive the current project or an empty project if none is open.
+-- This is useful when you want to use the objects query methods and defending
+-- against the object being nil gains nothing. Its data is going to be nil anyway.
+require("projects").current_project_or_empty()
+```
+
+### The Project object
+The project object has some built in methods
+
+``` lua
+local project = require("projects").current_project_or_empty()
+
+-- If key is not on the project object, look in the global config.
+-- If not defined return the default.
+local value = project:get(key, default)
+
+-- Get a nested value.
+-- If key or sub key is not on the project object, look in the global config.
+-- If not defined return the default.
+local sub_value = project:get_sub(key, sub_key, default)
 ```
 
 The one integration, that started this whole thing is best showcased with a real example 
@@ -220,11 +260,11 @@ nvim_lsp.ccls.setup {
     },
     root_dir = function(fname)
         -- project API magic start --
-        local project_root = project_settings.get_lsp_root('cpp', nil)
+        local lsp_root = projects.current_project_or_empty():get_sub('lsp_root','ccls', nil)
         -- project API magic end --
 
-        return project_root or util.root_pattern('compile_commands.json', '.ccls', "compile_flags.txt", ".git")(fname)
-                            or util.path.dirname(fname)
+        return lsp_root or util.root_pattern('compile_commands.json', '.ccls', "compile_flags.txt", ".git")(fname)
+                        or util.path.dirname(fname)
     end,
     capabilities = capabilities, -- comes from nvim-cmp for example.
     on_attach = on_attach,
@@ -233,10 +273,9 @@ vim.cmd('command! ClearCclsCache execute ":! rm -r '.. cache_dir .. '/*"')
 vim.cmd('command! CclsLog execute ":e '.. log_path .. '"')
 ```
 
-A crystal ball somewhere is telling of a need to push changes to subscribers
-when a project is loaded. But so far this query API does the trick.
+## Build Tasks
 
-## Startify screen
+## Startify Screen
 
 Here is how I configure startify. This `ProjectList` function returns the right 
 datastructure so all the available projects can be listed.

@@ -15,13 +15,12 @@ function M.ensure_dir(path_to_create)
     return path_to_create
 end
 
-
 function M.join(list, sep)
     local str = ''
     local first = true
     for _, s in ipairs(list) do
         if first then
-            str = str .. s
+            str = s
             first = false
         else
             str = str .. sep .. s
@@ -58,11 +57,19 @@ end
 function M.read_only (t)
     local proxy = {}
     local mt = {       -- create metatable
-        __index = t,
-        __newindex = function (t,k,v)
+        __index = function(p, k)
+            if t[k] and type(t[k] == 'table') then
+                return M.read_only(t[k])
+            end
+            return t[k]
+        end,
+        __newindex = function (p,k,v)
             error("attempt to update a read-only table", 2)
         end
     }
+    for key, value in pairs(t) do
+        mt[key] = value
+    end
     setmetatable(proxy, mt)
     return proxy
 end
@@ -82,6 +89,36 @@ function M.prompt_selection(select_list)
     end
 
     return selected
+end
+
+function M.deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[M.deepcopy(orig_key)] = M.deepcopy(orig_value)
+        end
+        setmetatable(copy, M.deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
+function M.empty(string)
+    return string == nil or string == ''
+end
+
+function M.merge_first_level(base, source)
+
+    if source then
+        for k, v in pairs(source) do
+            base[k] = v
+        end
+    end
+
+    return base
 end
 
 return M

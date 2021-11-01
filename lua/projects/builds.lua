@@ -1,7 +1,11 @@
-local projects = require'projects'
 local utils = require'projects.utils'
 
+
+-- ****************************************************************************
+--
+-- ****************************************************************************
 local config = {}
+
 
 -- ****************************************************************************
 --
@@ -47,42 +51,66 @@ local function cancel_build()
     end
 end
 
-local plug = {
-    name = 'builds'
-}
 
-function plug.on_load()
-    local project = projects.current_project()
-    config.current_project = project
-    -- update the build task list
-    if project.build_tasks then
-        -- Start with a clean slate
-        config.build_tasks = projects.global().build_tasks
+-- ****************************************************************************
+--
+-- ****************************************************************************
+local function update_build_tasks()
 
-        for k,v in pairs(project.build_tasks) do
-            if config.build_tasks[k] then
-                print('Warning project build task: ' .. k .. ' overrides global.')
-            end
+    config.build_tasks = {}
+
+    -- Start with the globals.
+    local global_tasks = config.host.config().build_tasks
+    if global_tasks then
+        for k,v in pairs(global_tasks) do
             config.build_tasks[k] = v
+        end
+    end
+
+    -- Update with project specific ones.
+    if config.current_project then
+        local prj_builds = config.current_project.build_tasks
+        if prj_builds then
+            for k,v in pairs(prj_builds) do
+                if config.build_tasks[k] then
+                    print('Warning project build task: ' .. k .. ' overrides a global one.')
+                end
+                config.build_tasks[k] = v
+            end
         end
     end
 end
 
+
+-- ****************************************************************************
+--
+-- ****************************************************************************
+local plug = {
+    name = 'builds'
+}
+
+function plug.on_init(host)
+    config.host = host
+    update_build_tasks()
+end
+
+function plug.on_load(current_project)
+    config.current_project = current_project
+    update_build_tasks()
+end
+
 function plug.on_close()
-    config.build_tasks = projects.global().build_tasks
     config.current_project = nil
+    update_build_tasks()
 end
 
 
 -- ****************************************************************************
 -- Public API
 -- ****************************************************************************
-local M = {}
-
-function M.setup()
-    projects.register_plugin(plug.name, plug)
-    config.build_tasks = projects.global().build_tasks
-end
+local M = {
+    plugin = plug
+}
 
 function M.project_build(task_name)
     if not task_name or task_name == '' then
@@ -125,5 +153,7 @@ end
 function M.builds_complete(_,_,_)
     return utils.join(build_list(), '\n')
 end
+
+M.build_list = build_list
 
 return M
