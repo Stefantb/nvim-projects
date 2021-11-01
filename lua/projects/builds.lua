@@ -1,16 +1,14 @@
-local utils = require'projects.utils'
-
+local utils = require 'projects.utils'
 
 -- ****************************************************************************
 --
 -- ****************************************************************************
 local config = {}
 
-
 -- ****************************************************************************
 --
 -- ****************************************************************************
-local yabs = require("yabs")
+local yabs = require 'yabs'
 
 local function build_list()
     return utils.keys(config.build_tasks)
@@ -39,7 +37,7 @@ local function run_build(build)
                 config.current_build_cancel = task.abortcommand
                 yabs.run_command(task.command, task.output, task.options or {})
             else
-                print('require\'yabs\' == nil')
+                print "require'yabs' == nil"
             end
         end
     end
@@ -51,18 +49,16 @@ local function cancel_build()
     end
 end
 
-
 -- ****************************************************************************
 --
 -- ****************************************************************************
 local function update_build_tasks()
-
     config.build_tasks = {}
 
     -- Start with the globals.
     local global_tasks = config.host.config().build_tasks
     if global_tasks then
-        for k,v in pairs(global_tasks) do
+        for k, v in pairs(global_tasks) do
             config.build_tasks[k] = v
         end
     end
@@ -71,7 +67,7 @@ local function update_build_tasks()
     if config.current_project then
         local prj_builds = config.current_project.build_tasks
         if prj_builds then
-            for k,v in pairs(prj_builds) do
+            for k, v in pairs(prj_builds) do
                 if config.build_tasks[k] then
                     print('Warning project build task: ' .. k .. ' overrides a global one.')
                 end
@@ -81,12 +77,11 @@ local function update_build_tasks()
     end
 end
 
-
 -- ****************************************************************************
 --
 -- ****************************************************************************
 local plug = {
-    name = 'builds'
+    name = 'builds',
 }
 
 function plug.on_init(host)
@@ -104,12 +99,11 @@ function plug.on_close()
     update_build_tasks()
 end
 
-
 -- ****************************************************************************
 -- Public API
 -- ****************************************************************************
 local M = {
-    plugin = plug
+    plugin = plug,
 }
 
 function M.project_build(task_name)
@@ -150,7 +144,7 @@ function M.project_build_cancel()
     cancel_build()
 end
 
-function M.builds_complete(_,_,_)
+function M.builds_complete(_, _, _)
     return utils.join(build_list(), '\n')
 end
 

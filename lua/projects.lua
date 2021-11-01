@@ -1,8 +1,7 @@
-local persistent = require'projects.persistent'
-local utils = require'projects.utils'
-local plugins = require'projects.plugins'
-local sessions = require'projects.sessions_startify'
-
+local persistent = require 'projects.persistent'
+local utils = require 'projects.utils'
+local plugins = require 'projects.plugins'
+local sessions = require 'projects.sessions_startify'
 
 -- ****************************************************************************
 --
@@ -12,10 +11,9 @@ local config = {}
 
 local function default_config()
     return {
-        project_dir  = "~/.config/nvim/projects/",
-        silent       = false,
-        plugins      = { builds = true
-        }
+        project_dir = '~/.config/nvim/projects/',
+        silent = false,
+        plugins = { builds = true },
     }
 end
 
@@ -24,7 +22,7 @@ end
 -- ****************************************************************************
 local function builtin_plugins()
     return {
-        builds = require'projects.builds'.plugin
+        builds = require('projects.builds').plugin,
     }
 end
 
@@ -62,7 +60,6 @@ local function empty(string)
     return string == nil or string == ''
 end
 
-
 -- ****************************************************************************
 -- Project object
 -- ****************************************************************************
@@ -97,7 +94,6 @@ function Project:get(key, default)
     return default
 end
 
-
 -- ****************************************************************************
 -- Project management
 -- ****************************************************************************
@@ -112,9 +108,9 @@ local function project_list()
             break
         end
         if typ == 'file' then
-            local striped_name = name:match('(.+)%.lua$')
+            local striped_name = name:match '(.+)%.lua$'
             if striped_name and striped_name ~= '' then
-                projects[#projects+1] = striped_name
+                projects[#projects + 1] = striped_name
             end
         end
     end
@@ -129,7 +125,7 @@ local function is_project_root_ok(project)
             is_ok = false
         end
     else
-        vim.notify('root_dir must be set !')
+        vim.notify 'root_dir must be set !'
         is_ok = false
     end
 
@@ -151,7 +147,7 @@ local function activate_project(project)
     end
 
     -- 3. cd to the project root.
-    vim.cmd('execute \'cd ' .. project.root_dir .. '\'')
+    vim.cmd("execute 'cd " .. project.root_dir .. "'")
 
     -- 4. call project on load.
     if project.on_load then
@@ -239,7 +235,6 @@ function M.on_close()
 end
 return M
 ]]
-
 
 -- ****************************************************************************
 -- Public API
@@ -332,10 +327,10 @@ function M.project_delete(project_name)
     print('Really delete ' .. project_name .. ' ? [y/n]')
     local answer = vim.fn.nr2char(vim.fn.getchar())
     if answer == 'y' then
-         -- close project if currently open
-         if current_project.name == project_name then
-             M.project_close()
-         end
+        -- close project if currently open
+        if current_project.name == project_name then
+            M.project_close()
+        end
         local project_data = load_project(project_name)
         local file_path = project_path(project_name)
         if vim.fn.delete(file_path) == 0 then
@@ -350,7 +345,7 @@ function M.project_delete(project_name)
             end
             print('Deleted ' .. project_name)
         else
-            print('Deletion failed!')
+            print 'Deletion failed!'
         end
     end
 end
@@ -372,7 +367,7 @@ function M.project_edit(project_name)
         ensure_projects_dir()
 
         local projectfile = project_path(project_name)
-        vim.cmd("edit " .. projectfile)
+        vim.cmd('edit ' .. projectfile)
         if is_new then
             local buf = vim.api.nvim_get_current_buf()
             vim.api.nvim_buf_set_lines(buf, 0, -1, false, utils.split_newlines(project_template))
@@ -380,7 +375,7 @@ function M.project_edit(project_name)
     end
 end
 
-function M.projects_complete(_,_,_)
+function M.projects_complete(_, _, _)
     return utils.join(project_list(), '\n')
 end
 
@@ -393,7 +388,7 @@ function M.projects_startify_list()
     for i, project in ipairs(project_list()) do
         list[i] = {
             line = project,
-            cmd = 'lua require\'projects\'.project_open(\'' .. project .. '\')'
+            cmd = "lua require'projects'.project_open('" .. project .. "')",
         }
     end
     return list

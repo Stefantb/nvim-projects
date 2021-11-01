@@ -12,15 +12,14 @@ vim.cmd 'command! -nargs=* -complete=custom,BuildsComplete PBuild           lua 
 vim.cmd 'command! -nargs=* -complete=custom,BuildsComplete PBuildSetDefault lua require("projects.builds").project_build_set_default(vim.fn.expand("<args>"))'
 vim.cmd 'command! -nargs=*                                 PBuildCancel     lua require("projects.builds").project_build_cancel()'
 
-vim.cmd([[
+vim.cmd [[
 fun ProjectsComplete(A,L,P)
     return luaeval('require("projects").projects_complete(A, L, P)')
 endfun
-]])
+]]
 
-vim.cmd([[
+vim.cmd [[
 fun BuildsComplete(A,L,P)
     return luaeval('require("projects.builds").builds_complete(A, L, P)')
 endfun
-]])
-
+]]

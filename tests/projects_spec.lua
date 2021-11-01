@@ -1,26 +1,20 @@
-local proj = require'projects'
-local utils = require'projects.utils'
+local proj = require 'projects'
+local utils = require 'projects.utils'
 
 describe('projects', function()
-
     describe('default settings', function()
-
-        proj.setup({testing = true})
+        proj.setup { testing = true }
 
         it('silent is false', function()
             local config = proj.config()
             assert.same(config.silent, false)
         end)
-
     end)
-
 end)
 
 describe('plugins', function()
-
     describe('default plugins', function()
-
-        proj.setup({})
+        proj.setup {}
 
         it('includes builds', function()
             local plugins = proj.plugins()
@@ -33,32 +27,30 @@ describe('plugins', function()
         end)
 
         it('can be disabled', function()
-            proj.setup({plugins = {builds=false}})
+            proj.setup { plugins = { builds = false } }
             local plugins = proj.plugins()
             assert.is_falsy(plugins.builds)
         end)
     end)
 
     describe('registering', function()
-
-        proj.setup({testing = true})
+        proj.setup { testing = true }
 
         it('name attribute must be defined', function()
-            proj.register_plugin({other = 'thing'})
+            proj.register_plugin { other = 'thing' }
 
             local plugins = proj.plugins()
             assert.is_falsy(plugins.thing)
         end)
 
         it('is rejected if name already exists', function()
-            proj.register_plugin({name = 'thing', other = 1})
-            proj.register_plugin({name = 'thing', other = 2})
+            proj.register_plugin { name = 'thing', other = 1 }
+            proj.register_plugin { name = 'thing', other = 2 }
 
             local plugins = proj.plugins()
             assert.is_equal(plugins.thing.other, 1)
         end)
     end)
-
 end)
 
 local function to_dict(list)
@@ -81,21 +73,19 @@ local function verify_only_expected_keys(actual, expected)
 end
 
 describe('builds', function()
-
     describe('list', function()
-
-        local builds = require'projects.builds'
-        local globals =  {
+        local builds = require 'projects.builds'
+        local globals = {
             one = {},
-            two = {}
+            two = {},
         }
 
         local host = {
             config = function()
                 return {
-                    build_tasks = utils.deepcopy(globals)
+                    build_tasks = utils.deepcopy(globals),
                 }
-            end
+            end,
         }
 
         it('has the global tasks after init', function()
@@ -110,11 +100,11 @@ describe('builds', function()
             builds.plugin.on_init(host)
 
             local t_proj = {
-               build_tasks = {
-                   two = {},     -- test overlap
-                   three = {},
-                   four = {}
-               }
+                build_tasks = {
+                    two = {}, -- test overlap
+                    three = {},
+                    four = {},
+                },
             }
 
             local expected = utils.deepcopy(globals)
@@ -133,8 +123,5 @@ describe('builds', function()
                 verify_only_expected_keys(build_list, expected)
             end)
         end)
-
     end)
 end)
-
-

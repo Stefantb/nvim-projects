@@ -1,5 +1,4 @@
-local utils = require'projects.utils'
-
+local utils = require 'projects.utils'
 
 -- ****************************************************************************
 -- Plugins
@@ -14,9 +13,8 @@ local utils = require'projects.utils'
 -- They are stored in a list, to ensure ordering, first come first served.
 -- ****************************************************************************
 
-
 local M = {
-    _plugins = {}
+    _plugins = {},
 }
 
 -- Returns the plugins as a table keyed on name.
@@ -32,7 +30,7 @@ end
 
 function M.register_plugin(plugin, host)
     if utils.empty(plugin.name) then
-        print('project plugin must have a name!')
+        print 'project plugin must have a name!'
         return
     end
 

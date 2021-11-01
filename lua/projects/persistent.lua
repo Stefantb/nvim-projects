@@ -1,28 +1,27 @@
-local utils = require'projects.utils'
+local utils = require 'projects.utils'
 
 -- ****************************************************************************
 -- Persistent state using JSON
 -- ****************************************************************************
 local function json_decode(data)
-  local ok, result = pcall(vim.fn.json_decode, data)
-  if ok then
-    return result
-  else
-    return nil
-  end
+    local ok, result = pcall(vim.fn.json_decode, data)
+    if ok then
+        return result
+    else
+        return nil
+    end
 end
 
 local function json_encode(data)
-  local ok, result = pcall(vim.fn.json_encode, data)
-  if ok then
-    return result
-  else
-    return nil
-  end
+    local ok, result = pcall(vim.fn.json_encode, data)
+    if ok then
+        return result
+    else
+        return nil
+    end
 end
 
 local function load_json(path)
-
     path = vim.fn.expand(path)
     if vim.fn.filereadable(path) == 0 then
         -- print('cannot read file: ' .. path )
@@ -39,22 +38,21 @@ local function save_json(path, table)
     local path_stem = vim.fn.fnamemodify(path, ':h')
     -- print('stem ' .. tostring(path_stem))
     utils.ensure_dir(tostring(path_stem))
-    if vim.fn.writefile({json_string}, path) ~= 0 then
+    if vim.fn.writefile({ json_string }, path) ~= 0 then
         return false
     end
     return true
 end
 
-
 -- ****************************************************************************
 --
 -- ****************************************************************************
-local persistent = { }
+local persistent = {}
 persistent.__index = persistent
 
 function persistent:create(path)
-    local new = {}             -- our new object
-    setmetatable(new, self)  -- make Persistent handle lookup
+    local new = {} -- our new object
+    setmetatable(new, self) -- make Persistent handle lookup
 
     new.state = {}
     new.loaded = false
@@ -71,7 +69,6 @@ function persistent:try_load()
 end
 
 function persistent:try_save()
-
     if vim.fn.filereadable(self.path) == 0 then
         -- print('file does not exist: ' .. path )
     else

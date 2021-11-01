@@ -6,10 +6,10 @@ end
 
 function M.ensure_dir(path_to_create)
     path_to_create = vim.fn.expand(path_to_create)
-    if not vim.loop.fs_access(path_to_create, "r") then
+    if not vim.loop.fs_access(path_to_create, 'r') then
         local success = vim.fn.mkdir(path_to_create, 'p')
         if not success then
-            vim.api.nvim_err_writeln('Could not create folder '..path_to_create..' E: '..tostring(success))
+            vim.api.nvim_err_writeln('Could not create folder ' .. path_to_create .. ' E: ' .. tostring(success))
         end
     end
     return path_to_create
@@ -40,7 +40,7 @@ end
 
 function M.split_newlines(text)
     local lines = {}
-    for s in text:gmatch("[^\r\n]+") do
+    for s in text:gmatch '[^\r\n]+' do
         table.insert(lines, s)
     end
     return lines
@@ -49,23 +49,23 @@ end
 function M.keys(table)
     local list = {}
     for key, _ in pairs(table) do
-        list[#list+1] = key
+        list[#list + 1] = key
     end
     return list
 end
 
-function M.read_only (t)
+function M.read_only(t)
     local proxy = {}
-    local mt = {       -- create metatable
+    local mt = { -- create metatable
         __index = function(p, k)
             if t[k] and type(t[k] == 'table') then
                 return M.read_only(t[k])
             end
             return t[k]
         end,
-        __newindex = function (p,k,v)
-            error("attempt to update a read-only table", 2)
-        end
+        __newindex = function(p, k, v)
+            error('attempt to update a read-only table', 2)
+        end,
     }
     for key, value in pairs(t) do
         mt[key] = value
@@ -111,7 +111,6 @@ function M.empty(string)
 end
 
 function M.merge_first_level(base, source)
-
     if source then
         for k, v in pairs(source) do
             base[k] = v
