@@ -55,7 +55,7 @@ end)
 
 local function to_dict(list)
     local ret = {}
-    for i, v in ipairs(list) do
+    for _, v in ipairs(list) do
         ret[v] = {}
     end
     return ret
