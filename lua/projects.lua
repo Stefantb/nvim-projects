@@ -1,7 +1,6 @@
 local persistent = require 'projects.persistent'
 local utils = require 'projects.utils'
 local plugins = require 'projects.plugins'
-local sessions = require 'projects.sessions_startify'
 
 -- ****************************************************************************
 --
@@ -13,7 +12,7 @@ local function default_config()
     return {
         project_dir = '~/.config/nvim/projects/',
         silent = false,
-        plugins = { builds = true },
+        plugins = { builds = true, sessions = true },
     }
 end
 
@@ -23,6 +22,7 @@ end
 local function builtin_plugins()
     return {
         builds = require('projects.builds').plugin,
+        sessions = require('projects.sessions_startify')
     }
 end
 
@@ -72,12 +72,33 @@ function Project:new(data)
     return data
 end
 
+function Project:get_sub_sub(key, sub_key, sub_sub_key, default)
+    if self[key] then
+        if self[key][sub_key] then
+            if self[key][sub_key][sub_sub_key] then
+                return self[key][sub_key][sub_sub_key]
+            end
+        end
+    end
+
+    if config[key] then
+        if config[key][sub_key] then
+            if config[key][sub_key][sub_sub_key] then
+                return config[key][sub_key][sub_sub_key]
+            end
+        end
+    end
+    return default
+end
+
 function Project:get_sub(key, sub_key, default)
     if self[key] then
         if self[key][sub_key] then
-            return self['lsp_root'][sub_key]
+            return self[key][sub_key]
         end
-    elseif config[key] then
+    end
+
+    if config[key] then
         if config[key][sub_key] then
             return config[key][sub_key]
         end
@@ -120,7 +141,7 @@ end
 local function is_project_root_ok(project)
     local is_ok = true
     if project.root_dir then
-        if not vim.loop.fs_access(project.root_dir, 'r') then
+        if not vim.loop.fs_access(vim.fn.expand(project.root_dir), 'r') then
             vim.notify('root_dir is not accessible: ' .. project.root_dir)
             is_ok = false
         end
@@ -132,43 +153,22 @@ local function is_project_root_ok(project)
     return is_ok
 end
 
-local function activate_project(project)
+local function activate_project(project, host)
     -- 1. assign the current project.
     current_project = project
 
-    -- 2. open the associated session.
-    sessions.close()
-    if project.session_name then
-        if sessions.exists(project.session_name) then
-            sessions.load(project.session_name)
-        else
-            sessions.save(project.session_name)
-        end
-    end
+    -- 2. register the project as a plugin
+    project._plug_priority = 1
+    plugins.register_plugin(project, host)
 
     -- 3. cd to the project root.
-    vim.cmd("execute 'cd " .. project.root_dir .. "'")
+    vim.cmd("execute 'cd " .. vim.fn.expand(project.root_dir) .. "'")
 
-    -- 4. call project on load.
-    if project.on_load then
-        project.on_load()
-    end
-
-    -- 5. call plugins on load.
-    plugins.publish_event('on_load', current_project)
-
-    -- 6. restart lsp TODO probably remove
-    vim.defer_fn(utils.restart_lsp, 50)
-
-    -- 7. notify user.
-    if config.silent == false then
-        vim.defer_fn(function()
-            vim.notify('[project-config] - ' .. project.name)
-        end, 100)
-    end
+    -- 4. call plugins on load.
+    plugins.publish_event('on_project_open', current_project)
 end
 
-local function load_project(project_name)
+local function load_project_from_file(project_name)
     ensure_projects_dir()
 
     if empty(project_name) then
@@ -180,6 +180,7 @@ local function load_project(project_name)
 
     if project_data then
         local project = Project:new(project_data)
+
         -- set some defaults
         project.name = project_name
         project.persistent = persistent:create(project_persistent_path(project_name))
@@ -226,11 +227,11 @@ local M = {
     },
 }
 
-function M.on_load()
+function M.on_project_open()
     vim.opt.makeprg = 'make'
 end
 
-function M.on_close()
+function M.on_project_close()
     print('Goodbye then.')
 end
 return M
@@ -239,7 +240,12 @@ return M
 -- ****************************************************************************
 -- Public API
 -- ****************************************************************************
-local M = {}
+local M = {
+    -- M being the plugin host can provide unified user interaction,
+    -- this could perhaps be overridden to use a telescope picker.
+    prompt_selection = utils.prompt_selection,
+    prompt_yes_no = utils.prompt_yes_no,
+}
 
 function M.setup(opts)
     config = utils.merge_first_level(default_config(), opts)
@@ -276,7 +282,7 @@ end
 function M.project_open(project_name)
     local projects = project_list()
     if not utils.is_in_list(projects, project_name) then
-        project_name = utils.prompt_selection(projects)
+        project_name = M.prompt_selection(projects)
     end
 
     if empty(project_name) then
@@ -287,12 +293,20 @@ function M.project_open(project_name)
         M.project_close()
     end
 
-    local project = load_project(project_name)
+    local project = load_project_from_file(project_name)
     if project then
-        activate_project(project)
+        activate_project(project, M)
         config.persistent:set('last_loaded_project', project_name)
+
+        -- notify the user
+        if config.silent == false then
+            vim.defer_fn(function()
+                vim.notify('[project-config] - ' .. project.name)
+            end, 100)
+        end
+
     else
-        print('Unable to load project: ' .. project_name)
+        vim.notify('Unable to load project: ' .. project_name)
     end
 end
 
@@ -302,50 +316,47 @@ function M.project_close()
     end
 
     if not config.silent then
-        print('closing: ' .. current_project.name)
+        vim.notify('closing: ' .. current_project.name)
     end
 
-    if current_project.on_close then
-        current_project.on_close()
+    if current_project.on_project_close then
+        current_project.on_project_close()
     end
-    plugins.publish_event('on_close', current_project)
 
-    sessions.close()
+    plugins.publish_event('on_project_close', current_project)
+
     current_project = nil
 end
 
 function M.project_delete(project_name)
     local projects = project_list()
     if not utils.is_in_list(projects, project_name) then
-        print('no project named: ' .. project_name)
+        vim.notify('no project named: ' .. project_name)
     end
 
     if empty(project_name) then
         return
     end
 
-    print('Really delete ' .. project_name .. ' ? [y/n]')
-    local answer = vim.fn.nr2char(vim.fn.getchar())
-    if answer == 'y' then
+    if M.prompt_yes_no('Really delete ' .. project_name) then
         -- close project if currently open
         if current_project.name == project_name then
             M.project_close()
         end
-        local project_data = load_project(project_name)
+        local project = load_project_from_file(project_name)
         local file_path = project_path(project_name)
         if vim.fn.delete(file_path) == 0 then
-            -- delete project json file
-            local pers_path = project_persistent_path(project_name)
-            vim.fn.delete(pers_path)
 
-            -- delete session
-            print('Delete associated session: ' .. project_data.session_name .. ' ? [y/n]')
-            if answer == 'y' then
-                sessions.delete(project_data.session_name)
-            end
-            print('Deleted ' .. project_name)
+            -- delete project json file
+            local persistent_path = project_persistent_path(project_name)
+            vim.fn.delete(persistent_path)
+
+            -- notify plugins
+            plugins.publish_event('on_project_delete', project)
+
+            vim.notify('Deleted ' .. project.name)
         else
-            print 'Deletion failed!'
+            vim.notify('Deletion failed!')
         end
     end
 end
@@ -358,7 +369,7 @@ function M.project_edit(project_name)
     local projects = project_list()
 
     if empty(project_name) then
-        project_name = utils.prompt_selection(projects)
+        project_name = M.prompt_selection(projects)
     end
 
     local is_new = not utils.is_in_list(projects, project_name)

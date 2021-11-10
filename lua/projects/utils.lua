@@ -1,9 +1,5 @@
 local M = {}
 
-function M.restart_lsp()
-    vim.cmd ':LspRestart'
-end
-
 function M.ensure_dir(path_to_create)
     path_to_create = vim.fn.expand(path_to_create)
     if not vim.loop.fs_access(path_to_create, 'r') then
@@ -72,6 +68,12 @@ function M.read_only(t)
     end
     setmetatable(proxy, mt)
     return proxy
+end
+
+function M.prompt_yes_no(question)
+    print(question .. ' ? [y/n]')
+    local answer = vim.fn.nr2char(vim.fn.getchar())
+    return answer == 'y'
 end
 
 function M.prompt_selection(select_list)

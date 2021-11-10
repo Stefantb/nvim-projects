@@ -5,12 +5,13 @@ local utils = require 'projects.utils'
 --
 -- local Plugin = {
 --     name = 'something unique'
---     on_init = function(host) ..
---     on_load = function(project) ..
---     on_close = function(project) ..
+--     project_plugin_init = function(host) ..
+--     on_project_open = function(project) ..
+--     on_project_close = function(project) ..
 -- }
 --
 -- They are stored in a list, to ensure ordering, first come first served.
+-- unless _plug_priority is set, lower number makes for higher priority.
 -- ****************************************************************************
 
 local M = {
@@ -28,6 +29,12 @@ function M.plugins()
     return ret
 end
 
+local function priority_sort(a, b)
+    local ap = a._plug_priority or 10
+    local bp = b._plug_priority or 10
+    return ap < bp
+end
+
 function M.register_plugin(plugin, host)
     if utils.empty(plugin.name) then
         print 'project plugin must have a name!'
@@ -41,9 +48,10 @@ function M.register_plugin(plugin, host)
     end
 
     table.insert(M._plugins, plugin) -- utils.deepcopy(plugin))
+    table.sort(M._plugins, priority_sort)
 
-    if plugin.on_init then
-        plugin.on_init(host)
+    if plugin.project_plugin_init then
+        plugin.project_plugin_init(host)
     end
 end
 

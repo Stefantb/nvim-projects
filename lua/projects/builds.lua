@@ -84,17 +84,17 @@ local plug = {
     name = 'builds',
 }
 
-function plug.on_init(host)
+function plug.project_plugin_init(host)
     config.host = host
     update_build_tasks()
 end
 
-function plug.on_load(current_project)
+function plug.on_project_open(current_project)
     config.current_project = current_project
     update_build_tasks()
 end
 
-function plug.on_close()
+function plug.on_project_close()
     config.current_project = nil
     update_build_tasks()
 end

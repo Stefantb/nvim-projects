@@ -149,7 +149,7 @@ a project you can edit to your hearts content and then save.
 Here we see the way build tasks are defined and an example of how vim-dispatch and yabs can be used.
 They are distinguished by the executor key.
 
-The `on_load` function, if defined, will be called when a project is loaded, and similarly `on_close` is
+The `on_project_open` function, if defined, will be called when a project is loaded, and similarly `on_project_close` is
 called when the project is closed.
 
 ``` lua
@@ -179,11 +179,11 @@ local M = {
     }
 }
 
-function M.on_load()
+function M.on_project_open()
     vim.opt.makeprg = 'make'
 end
 
-function M.on_close()
+function M.on_project_close()
     print('Goodbye then.')
 end
 return M
@@ -193,13 +193,13 @@ return M
 ## Plugin API
 
 Plugins can register themselves using the `register_plugin` function.
-This simply subscribes functions to receiving the `on_load` and `on_close` callbacks.
+This simply subscribes functions to receiving the `on_project_open` and `on_project_close` callbacks.
 
 ``` lua
 require("projects").register_plugin{
     name = 'name',
-    on_load = somefunc,
-    on_close = somefunc
+    on_project_open = somefunc,
+    on_project_close = somefunc
 }
 ```
 After receiving the events the query API can be used to access the project data.

@@ -89,15 +89,15 @@ describe('builds', function()
         }
 
         it('has the global tasks after init', function()
-            builds.plugin.on_init(host)
+            builds.plugin.project_plugin_init(host)
 
             local build_list = to_dict(builds.build_list())
             local expected = utils.deepcopy(globals)
             verify_only_expected_keys(build_list, expected)
         end)
 
-        it('has the union of global and project build tasks after on_load', function()
-            builds.plugin.on_init(host)
+        it('has the union of global and project build tasks after on_project_open', function()
+            builds.plugin.project_plugin_init(host)
 
             local t_proj = {
                 build_tasks = {
@@ -111,12 +111,12 @@ describe('builds', function()
             expected.three = {}
             expected.four = {}
 
-            builds.plugin.on_load(t_proj)
+            builds.plugin.on_project_open(t_proj)
             local build_list = to_dict(builds.build_list())
             verify_only_expected_keys(build_list, expected)
 
-            it('and only the global tasks again after on_close', function()
-                builds.plugin.on_close(host)
+            it('and only the global tasks again after on_project_close', function()
+                builds.plugin.on_project_close(host)
 
                 build_list = to_dict(builds.build_list())
                 expected = utils.deepcopy(globals)
