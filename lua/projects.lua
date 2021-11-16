@@ -168,6 +168,20 @@ local function activate_project(project, host)
     plugins.publish_event('on_project_open', current_project)
 end
 
+local function project_close_current()
+    if current_project then
+
+        -- 1. call plugins on close.
+        plugins.publish_event('on_project_close', current_project)
+
+        -- 2. unregister the current project as a plugin.
+        plugins.unregister_plugin(current_project.name)
+
+        -- 3. unassign the current project.
+        current_project = nil
+    end
+end
+
 local function load_project_from_file(project_name)
     ensure_projects_dir()
 
@@ -200,9 +214,7 @@ end
 local project_template = [[
 local M = {
     root_dir = 'This is mandatory.',
-    -- lsp_root = {
-        -- sub_key = 'some path'
-    -- }
+    -- lsp_config = {}
     -- session_name = 'defaults to project name.'
 
     build_tasks = {
@@ -319,13 +331,7 @@ function M.project_close()
         vim.notify('closing: ' .. current_project.name)
     end
 
-    if current_project.on_project_close then
-        current_project.on_project_close()
-    end
-
-    plugins.publish_event('on_project_close', current_project)
-
-    current_project = nil
+    project_close_current()
 end
 
 function M.project_delete(project_name)

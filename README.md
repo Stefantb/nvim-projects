@@ -11,62 +11,68 @@ Until recently life without projects has been working great. I discovered [vim-s
 which made life pretty great for a while, it made working with sessions a wonderful experience
 and I could come back to my projects with ease.
 
-But then I started to work on a project that is organized as a monorepo. When working on that,
+The thing is though that some settings are not persisted in the sessions, like makeprg for example.
+
+Then when I started working on a project that is organized as a monorepo. More friction showed up,
 I want vim's working directory to stay at the repository root so project wide searches work
-and my project drawer can show me what I want. But at the same time I want the LSP root to be
-pointing to a subfolder, containing the sub project I am working on.
+and my project drawer can show me what I want. But at the same time I want project specific LSP settings.
 
 Why is that important?
 
 Well I want ccls to create isolated caches for each project, because although they mostly
 build the same sources, preprocessor definitions and build flags are very different.
 It does get tired to clear the cache each time I switch projects. 
-(The thing is here that ccls uses the path to the root its given, to distinguish the cache).
-We could also just tell ccls where to store the cache on a per project basis, but that does
-not remove the need for a per project configuration.
 
 I have also been very content with running builds in a terminal besides my editor and that
 works fine. I do miss running them in the editor for when things go wrong and I get the errors in
 the quick fix list. 
 
-Oh and of course, builds should be asynchronous.
-
 And I dont want to mess with `exrc`.
 
-I want nice things and here we are.
+I think its time to attempt scratching this itch, and have fun in the way.
 
 
-## What are the features
+## How does it work
 
-The idea is to make a very small and simple plugin that basically just
-manages CRUD for a project and creates a simple foundation that can be
-built upon. It should be quite transparent how you can add data on
-a global level, and or per project and then retreive the data.
+The idea is to make a very small and simple plugin that basically
+manages opening, closing and CRUD for projects.
+Internally it also provides ways to query settings and subscribe to lifecycle events such as
+`on_project_open`, `on_project_close` and `on_project_delete`.
+
+In the current implementation the project itself is a lua table providing a key value store.
+There is also a corresponding global lua table that can provide defauls for projects to override.
+
 
 The basic project infrastructure does the following:
-- [X] Commands to create, edit, delete, load and close projects.
+- [X] Commands to create, edit, delete, open and close projects.
 - [X] Keep the project files in a configurable location outside
       the source repositories.
-- [X] The ability to keep persistent state with each project.
+- [X] The ability to keep persistent programatically mutable state with each project.
+- [X] Plug in API for extending functionality.
+    - [X] Subscribe to lifecycle events.
+    - [X] Query settings.
+
+### Default project plugins
+On its own the project infrastructure does nothing interesting so there are some project plugins
+that come built in.
+
+##### Sessions
+Let's rely on startify to manage sessions.
+
 - [X] Associated sessions with each project managed by [vim-startify](https://github.com/mhinz/vim-startify)
 - [X] Easy integration to show projects listed on the startify screen.
-- [X] Plug in API for extending functionality, build tasks is a showcase for this.
-- [X] An API for other plugins (my config) to query the current project.
 
-Immediately building upon this base, is the built in build management:
-- [X] Commands to run build tasks, cancel builds and easily swicth the
-      default task.
-- [X] Provide a schema for declaring build tasks.
-- [X] Merge global and per project build tasks, for presenting to the user.
-
-
-Let's rely on startify to manage sessions. And it is best to use some other great plugins for 
-running builds. I recommend [vim-dispatch](https://github.com/tpope/vim-dispatch) for that.
+##### Builds
+An integration with [vim-dispatch](https://github.com/tpope/vim-dispatch) to specify tasks to run
+and provide a way to quickly switch between them.
 There is also an experimental integration for [yabs](https://github.com/pianocomposer321/yabs.nvim), a recent solution in the space.
 
-There is a good chance that you are able to transparently use any build system using the 
-same integration as dispatch, shown in the examples below. It simply relies on calling 
-vim commands specified in the config.
+- [X] Commands to run build tasks, cancel builds and easily swicth the
+      default task.
+- [X] Merge global and per project build tasks, for presenting to the user.
+
+##### LSPconfig
+WIP....
 
 
 ## Installation
@@ -86,20 +92,16 @@ use {
 
 ## Usage
 
-Initialize the global settings by calling setup.
-Its enough to call setup with an empty table. The defaults you can override are shown in the
-example and this is also the place to add globally available build tasks, more on them later.
-We also see a way to add plugins to the project, build management is implemented as a plugin,
-it can be disabled by passing `{builds = false}` as the initializer.
+Initialize the plugin and the global settings by calling setup.
+Its enough to call setup with an empty table.
+All the keys and values you put into this table become the global defaults that projects can override.
+Default plugins can be disabled passing `plugins = {<plug name> = false}`.
 
 ``` lua
 require("projects").setup{
-    project_dir          = "~/.config/nvim/projects/",
-    silent               = false,
-    plugins = {
-        builds = function() require'projects.builds'.setup() end
-    },
-    build_tasks          = {},
+    project_dir = '~/.config/nvim/projects/',
+    silent = false,
+    plugins = { builds = true, sessions = true },
 }
 
 ```
@@ -107,33 +109,39 @@ require("projects").setup{
 
 ### Commands
 
-Here are the commands. They come with completion.
-There are no default keybindings so that is up to the user.
+Here are the commands. There is tab completion when relevant.
 
+#### Projects
 ``` vim
+:PEdit [project_name]   "Edit a project file for a project that already exists
+                        "or provide a name for a new file to create and edit.
 
-:PEdit [project_name]   Edit a project file for a project that already exists
-                        or provide a name for a new file to create and edit.
+:POpen [project_name]   "Open an existing project.
 
-:POpen [project_name]   Open an existing project.
+:PDelete [project_name] "Delete the project file for a project that exists.
+                        "Note that the associated session will not be deleted
+                        "automatically.
 
-:PDelete [project_name] Delete the project file for a project that exists.
-                        Note that the associated session will not be deleted
-                        automatically.
-
-:PClose                 Close the current project.
-
-:PBuild [task_name]     Start a build with a configured task.
-                        If no task name is given, the default task is run.
-                        Tasks can be configured per project in the project file
-                        or globally using the setup method.
-
-:PBuildSetDefault       Set the default build task.
-
-:PBuildCancel           Cancel a running build. Only available if the build executor
-                        provides a way to cancel a build.
-
+:PClose                 "Close the current project.
 ```
+
+#### Builds
+``` vim
+:PBuild [task_name]     "Start a task.
+                        "If no task name is given, the default task is run.
+                        "Tasks can be configured per project in the project file
+                        "or globally using the setup method.
+
+:PBuildSetDefault       "Set the default build task.
+
+:PBuildCancel           "Cancel a running build.
+                        "Note ! Only available if the build executor
+                        "provides a way to cancel a build.
+```
+
+
+
+
 ### Built in help
 
 Remember to try this.
@@ -141,23 +149,39 @@ Remember to try this.
 :h projects
 ```
 
-### The Project File
+## Plugin API
 
+Plugins can be registered using the `register_plugin` function.
+Implement any of the callback functions to receive the events.
+
+When a plugin is registered, `project_plugin_init` is immediately called with
+the plugin host as the argument. The plugin host is the project plugin itself.
+``` lua
+require("projects").register_plugin{
+    name = 'a unique name',
+    project_plugin_init = function(plugin_host)end,
+    on_project_open = function(project)end,
+    on_project_close = function(project)end,
+    on_project_delete = function(project)end
+
+}
+```
+After receiving the events the query API can be used to access the project data.
+
+
+### The Project File
 When you create a new project a buffer will open with a template for
 a project you can edit to your hearts content and then save.
 
 Here we see the way build tasks are defined and an example of how vim-dispatch and yabs can be used.
 They are distinguished by the executor key.
 
-The `on_project_open` function, if defined, will be called when a project is loaded, and similarly `on_project_close` is
-called when the project is closed.
+Projects are automatically registered as plugins.
 
 ``` lua
 local M = {
     root_dir = 'This is mandatory.',
-    -- lsp_root = {
-        -- sub_key = 'some path'
-    -- }
+    -- lsp_config = {}
     -- session_name = 'defaults to project name.'
 
     build_tasks = {
@@ -190,41 +214,46 @@ return M
 
 ```
 
-## Plugin API
+## Plugin Host
 
-Plugins can register themselves using the `register_plugin` function.
-This simply subscribes functions to receiving the `on_project_open` and `on_project_close` callbacks.
 
 ``` lua
-require("projects").register_plugin{
-    name = 'name',
-    on_project_open = somefunc,
-    on_project_close = somefunc
+
+plugin_host = {
+
+    -- Returns the global config as a read only table.
+    config = function() end,
+
+    -- Retreive the project object or nil if no project is open.
+    current_project = function() end,
+
+    -- Retreive the current project or an empty project if none is open.
+    -- This is useful when you want to use the objects query methods and defending
+    -- against the object being nil gains nothing. Its data is going to be nil anyway.
+    current_project_or_empty = function() end,
+
+    -- Prompt the user for a selection.
+    -- Returns the selected item.
+    prompt_selection = function(select_list) end,
+
+    -- Prompt the user for a yes or no question.
+    -- Returns a bool.
+    prompt_yes_no = function(question_string) end,
+
+    -- log functions.
+    -- logi
+    -- logw
+    -- loge
 }
+
+
 ```
-After receiving the events the query API can be used to access the project data.
 
 ## Query API
 
 
-``` lua
-
--- Retreive the current global configuration as a table.
-require("projects").config()
-
--- The following return the project as an object that has some convenience methods.
-
--- Retreive the project object or nil if no project is open.
-require("projects").current_project()
-
--- Retreive the current project or an empty project if none is open.
--- This is useful when you want to use the objects query methods and defending
--- against the object being nil gains nothing. Its data is going to be nil anyway.
-require("projects").current_project_or_empty()
-```
-
 ### The Project object
-The project object has some built in methods
+Projects tables are enhanced with methods to ease querying.
 
 ``` lua
 local project = require("projects").current_project_or_empty()
@@ -237,6 +266,12 @@ local value = project:get(key, default)
 -- If key or sub key is not on the project object, look in the global config.
 -- If not defined return the default.
 local sub_value = project:get_sub(key, sub_key, default)
+
+
+-- Get a nested value.
+-- If key, sub_key or sub_sub_key is not on the project object, look in the global config.
+-- If not defined return the default.
+local sub_sub_value = project:get_sub_sub(key, sub_key, sub_sub_key, default)
 ```
 
 The one integration, that started this whole thing is best showcased with a real example 

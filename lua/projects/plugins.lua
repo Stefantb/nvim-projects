@@ -8,6 +8,7 @@ local utils = require 'projects.utils'
 --     project_plugin_init = function(host) ..
 --     on_project_open = function(project) ..
 --     on_project_close = function(project) ..
+--     on_project_delete = function(project) ..
 -- }
 --
 -- They are stored in a list, to ensure ordering, first come first served.
@@ -18,6 +19,12 @@ local M = {
     _plugins = {},
 }
 
+local function priority_sort(a, b)
+    local ap = a._plug_priority or 10
+    local bp = b._plug_priority or 10
+    return ap < bp
+end
+
 -- Returns the plugins as a table keyed on name.
 -- The order is assigned as attribute _prj_id for introspection.
 function M.plugins()
@@ -27,12 +34,6 @@ function M.plugins()
         ret[plugin.name]._prj_id = i
     end
     return ret
-end
-
-local function priority_sort(a, b)
-    local ap = a._plug_priority or 10
-    local bp = b._plug_priority or 10
-    return ap < bp
 end
 
 function M.register_plugin(plugin, host)
@@ -47,12 +48,26 @@ function M.register_plugin(plugin, host)
         return
     end
 
-    table.insert(M._plugins, plugin) -- utils.deepcopy(plugin))
+    table.insert(M._plugins, plugin)
     table.sort(M._plugins, priority_sort)
 
     if plugin.project_plugin_init then
         plugin.project_plugin_init(host)
     end
+end
+
+function M.unregister_plugin(plugin_name)
+
+    local index = utils.array_find(M._plugins, function(plug)
+        return plug.name == plugin_name
+    end)
+
+    if not index then
+        print('cannot unregister plugin: ' .. plugin_name .. ' not found')
+        return
+    end
+
+    table.remove(M._plugins, index)
 end
 
 function M.publish_event(method, ...)

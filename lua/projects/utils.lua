@@ -122,4 +122,14 @@ function M.merge_first_level(base, source)
     return base
 end
 
+function M.array_find(array, predicate)
+    for i, v in ipairs(array) do
+        if predicate(v) then
+            return i
+        end
+    end
+    return nil
+end
+
+
 return M
