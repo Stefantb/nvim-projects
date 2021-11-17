@@ -84,7 +84,7 @@ end
 
 sessions.config_example = [[
 'sessions' = {
-    session_name = 'defaults to project name',
+    -- session_name = 'defaults to project name',
 },
 ]]
 

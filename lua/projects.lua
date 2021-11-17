@@ -132,12 +132,12 @@ local function activate_project(project, host)
     -- 1. assign the current project.
     current_project = project
 
-    -- 2. register the project as an extension
+    -- 2. cd to the project root.
+    vim.cmd("execute 'cd " .. vim.fn.expand(project.root_dir) .. "'")
+
+    -- 3. register the project as an extension
     project._ext_priority = 1
     extensions.register_extension(project, host)
-
-    -- 3. cd to the project root.
-    vim.cmd("execute 'cd " .. vim.fn.expand(project.root_dir) .. "'")
 
     -- 4. call extensions on load.
     extensions.publish_event('on_project_open', current_project)
@@ -218,7 +218,7 @@ local function render_project_template()
     local templates = extensions.read_project_templates()
 
     local indent = '        '
-    for source_name, conf_str in pairs(templates) do
+    for _, conf_str in pairs(templates) do
         -- str = str .. '-- ' .. source_name .. '\n'
         for line in utils.lines(conf_str) do
             if line ~= '' then
