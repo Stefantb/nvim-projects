@@ -122,6 +122,21 @@ function M.merge_first_level(base, source)
     return base
 end
 
+function M.table_merge(t1, t2)
+    for k,v in pairs(t2) do
+        if type(v) == "table" then
+            if type(t1[k] or false) == "table" then
+                M.table_merge(t1[k] or {}, t2[k] or {})
+            else
+                t1[k] = v
+            end
+        else
+            t1[k] = v
+        end
+    end
+    return t1
+end
+
 function M.array_find(array, predicate)
     for i, v in ipairs(array) do
         if predicate(v) then
@@ -131,5 +146,10 @@ function M.array_find(array, predicate)
     return nil
 end
 
+-- https://stackoverflow.com/questions/19326368/iterate-over-lines-including-blank-lines
+function M.lines(s)
+        if s:sub(-1)~="\n" then s=s.."\n" end
+        return s:gmatch("(.-)\n")
+end
 
 return M

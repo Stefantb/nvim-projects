@@ -1,6 +1,6 @@
 local persistent = require 'projects.persistent'
 local utils = require 'projects.utils'
-local plugins = require 'projects.plugins'
+local extensions = require 'projects.extensions'
 
 -- ****************************************************************************
 --
@@ -12,33 +12,8 @@ local function default_config()
     return {
         project_dir = '~/.config/nvim/projects/',
         silent = false,
-        plugins = { builds = true, sessions = true },
+        extensions = {},
     }
-end
-
--- ****************************************************************************
--- Plugin management
--- ****************************************************************************
-local function builtin_plugins()
-    return {
-        builds = require('projects.builds').plugin,
-        sessions = require('projects.sessions_startify')
-    }
-end
-
-local function init_plugins(plug_config, host)
-    plugins.init()
-
-    local builtin = builtin_plugins()
-    for plugin_name, value in pairs(plug_config) do
-        if value ~= false then
-            if builtin[plugin_name] then
-                plugins.register_plugin(builtin[plugin_name], host)
-            else
-                print('no built in project plugin ' .. plugin_name)
-            end
-        end
-    end
 end
 
 -- ****************************************************************************
@@ -72,48 +47,48 @@ function Project:new(data)
     return data
 end
 
-function Project:get_sub_sub(key, sub_key, sub_sub_key, default)
-    if self[key] then
-        if self[key][sub_key] then
-            if self[key][sub_key][sub_sub_key] then
-                return self[key][sub_key][sub_sub_key]
+function Project:get_sub_sub(ext, sub_key, sub_sub_key, default)
+    if self.extensions[ext] then
+        if self.extensions[ext][sub_key] then
+            if self.extensions[ext][sub_key][sub_sub_key] then
+                return self.extensions[ext][sub_key][sub_sub_key]
             end
         end
     end
 
-    if config[key] then
-        if config[key][sub_key] then
-            if config[key][sub_key][sub_sub_key] then
-                return config[key][sub_key][sub_sub_key]
+    if config.extensions[ext] then
+        if config.extensions[ext][sub_key] then
+            if config.extensions[ext][sub_key][sub_sub_key] then
+                return config.extensions[ext][sub_key][sub_sub_key]
             end
         end
     end
     return default
 end
 
-function Project:get_sub(key, sub_key, default)
-    if self[key] then
-        if self[key][sub_key] then
-            return self[key][sub_key]
+function Project:get_sub(ext, sub_key, default)
+    if self.extensions[ext] then
+        if self.extensions[ext][sub_key] then
+            return self.extensions[ext][sub_key]
         end
     end
 
-    if config[key] then
-        if config[key][sub_key] then
-            return config[key][sub_key]
+    if config.extensions[ext] then
+        if config.extensions[ext][sub_key] then
+            return config.extensions[ext][sub_key]
         end
     end
     return default
 end
 
-function Project:get(key, default)
-    if self[key] then
-        return self[key]
-    elseif config[key] then
-        return config[key]
-    end
-    return default
-end
+-- function Project:get(key, default)
+--     if self[key] then
+--         return self[key]
+--     elseif config[key] then
+--         return config[key]
+--     end
+--     return default
+-- end
 
 -- ****************************************************************************
 -- Project management
@@ -157,25 +132,25 @@ local function activate_project(project, host)
     -- 1. assign the current project.
     current_project = project
 
-    -- 2. register the project as a plugin
-    project._plug_priority = 1
-    plugins.register_plugin(project, host)
+    -- 2. register the project as an extension
+    project._ext_priority = 1
+    extensions.register_extension(project, host)
 
     -- 3. cd to the project root.
     vim.cmd("execute 'cd " .. vim.fn.expand(project.root_dir) .. "'")
 
-    -- 4. call plugins on load.
-    plugins.publish_event('on_project_open', current_project)
+    -- 4. call extensions on load.
+    extensions.publish_event('on_project_open', current_project)
 end
 
 local function project_close_current()
     if current_project then
 
-        -- 1. call plugins on close.
-        plugins.publish_event('on_project_close', current_project)
+        -- 1. call extensions on close.
+        extensions.publish_event('on_project_close', current_project)
 
-        -- 2. unregister the current project as a plugin.
-        plugins.unregister_plugin(current_project.name)
+        -- 2. unregister the current project as a extension.
+        extensions.unregister_extension(current_project.name)
 
         -- 3. unassign the current project.
         current_project = nil
@@ -190,7 +165,12 @@ local function load_project_from_file(project_name)
     end
 
     local file_path = project_path(project_name)
-    local project_data = dofile(file_path)
+
+    local ok, project_data = pcall(dofile, file_path)
+
+    if ok == false then
+        return nil
+    end
 
     if project_data then
         local project = Project:new(project_data)
@@ -199,8 +179,8 @@ local function load_project_from_file(project_name)
         project.name = project_name
         project.persistent = persistent:create(project_persistent_path(project_name))
 
-        if not project.session_name then
-            project.session_name = project.name
+        if not project.extensions then
+            project.extensions = {}
         end
 
         -- print(vim.inspect(project))
@@ -214,28 +194,11 @@ end
 local project_template = [[
 local M = {
     root_dir = 'This is mandatory.',
-    -- lsp_config = {}
+    -- silent = false,
     -- session_name = 'defaults to project name.'
 
-    build_tasks = {
-        task_name = {
-            executor     = 'vim',
-            compiler     = 'gcc',
-            makeprg      = 'make',
-            command      = 'Make release',
-            abortcommand = 'AbortDispatch'
-
-        },
-        task_name2 = {
-            executor = 'yabs',
-            command = 'gcc main.c -o main',
-            output = 'quickfix',
-            opts = {
-            },
-        },
-    },
-    plugins = {
-        'projects.builds'
+    extensions = {
+%s
     },
 }
 
@@ -248,6 +211,26 @@ function M.on_project_close()
 end
 return M
 ]]
+
+
+local function render_project_template()
+    local str = ''
+    local templates = extensions.read_project_templates()
+
+    local indent = '        '
+    for source_name, conf_str in pairs(templates) do
+        -- str = str .. '-- ' .. source_name .. '\n'
+        for line in utils.lines(conf_str) do
+            if line ~= '' then
+                str = str .. indent .. line .. '\n'
+            else
+                str = str .. line .. '\n'
+            end
+        end
+    end
+
+    return string.format(project_template, str)
+end
 
 
 local function register_commands()
@@ -279,7 +262,7 @@ end
 -- Public API
 -- ****************************************************************************
 local M = {
-    -- M being the plugin host can provide unified user interaction,
+    -- M being the extension host can provide unified user interaction,
     -- this could perhaps be overridden to use a telescope picker.
     prompt_selection = utils.prompt_selection,
     prompt_yes_no = utils.prompt_yes_no,
@@ -289,19 +272,12 @@ function M.setup(opts)
     config = utils.merge_first_level(default_config(), opts)
 
     config.persistent = persistent:create(config.project_dir .. '/__projects__.json')
-    init_plugins(config.plugins, M)
-
-    -- allow a little more introspection during testing.
-    if config.testing then
-        M.plugins = plugins.plugins
-        M.project_activate = activate_project
-    end
 
     register_commands()
 end
 
-function M.register_plugin(plugin)
-    plugins.register_plugin(plugin, M)
+function M.register_extension(extension)
+    extensions.register_extension(extension, M)
 end
 
 function M.config()
@@ -317,6 +293,10 @@ function M.current_project_or_empty()
         return Project:new()
     end
     return M.current_project()
+end
+
+function M.print_project_template()
+    print(render_project_template())
 end
 
 function M.project_open(project_name)
@@ -385,10 +365,12 @@ function M.project_delete(project_name)
             local persistent_path = project_persistent_path(project_name)
             vim.fn.delete(persistent_path)
 
-            -- notify plugins
-            plugins.publish_event('on_project_delete', project)
+            if project then
+                -- notify extensions
+                extensions.publish_event('on_project_delete', project)
 
-            vim.notify('Deleted ' .. project.name)
+                vim.notify('Deleted ' .. project.name)
+            end
         else
             vim.notify('Deletion failed!')
         end
@@ -415,7 +397,7 @@ function M.project_edit(project_name)
         vim.cmd('edit ' .. projectfile)
         if is_new then
             local buf = vim.api.nvim_get_current_buf()
-            vim.api.nvim_buf_set_lines(buf, 0, -1, false, utils.split_newlines(project_template))
+            vim.api.nvim_buf_set_lines(buf, 0, -1, false, utils.split_newlines(render_project_template()))
         end
     end
 end

@@ -56,7 +56,7 @@ local function update_build_tasks()
     config.build_tasks = {}
 
     -- Start with the globals.
-    local global_tasks = config.host.config().build_tasks
+    local global_tasks = config.host.config().extensions.build_tasks
     if global_tasks then
         for k, v in pairs(global_tasks) do
             config.build_tasks[k] = v
@@ -65,7 +65,7 @@ local function update_build_tasks()
 
     -- Update with project specific ones.
     if config.current_project then
-        local prj_builds = config.current_project.build_tasks
+        local prj_builds = config.current_project.extensions.build_tasks
         if prj_builds then
             for k, v in pairs(prj_builds) do
                 if config.build_tasks[k] then
@@ -78,33 +78,26 @@ local function update_build_tasks()
 end
 
 -- ****************************************************************************
---
+-- Public API
 -- ****************************************************************************
-local plug = {
+local M = {
     name = 'builds',
 }
 
-function plug.project_plugin_init(host)
+function M.project_extension_init(host)
     config.host = host
     update_build_tasks()
 end
 
-function plug.on_project_open(current_project)
+function M.on_project_open(current_project)
     config.current_project = current_project
     update_build_tasks()
 end
 
-function plug.on_project_close()
+function M.on_project_close()
     config.current_project = nil
     update_build_tasks()
 end
-
--- ****************************************************************************
--- Public API
--- ****************************************************************************
-local M = {
-    plugin = plug,
-}
 
 function M.project_build(task_name)
     if not task_name or task_name == '' then
@@ -149,5 +142,27 @@ function M.builds_complete(_, _, _)
 end
 
 M.build_list = build_list
+
+M.config_example = [[
+'builds' = {
+    build_tasks = {
+        task_name = {
+            executor     = 'vim',
+            compiler     = 'gcc',
+            makeprg      = 'make',
+            command      = 'Make release',
+            abortcommand = 'AbortDispatch'
+
+        },
+        task_name2 = {
+            executor = 'yabs',
+            command = 'gcc main.c -o main',
+            output = 'quickfix',
+            opts = {
+            },
+        },
+    },
+},
+]]
 
 return M
