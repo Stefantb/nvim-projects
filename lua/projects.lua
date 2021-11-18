@@ -1,6 +1,6 @@
 local persistent = require 'projects.persistent'
 local utils = require 'projects.utils'
-local extensions = require 'projects.extensions'
+local extension_man = require('projects.extension_manager'):new()
 
 -- ****************************************************************************
 --
@@ -95,20 +95,19 @@ local function activate_project(project, host)
 
     -- 3. register the project as an extension
     project._ext_priority = 1
-    extensions.register_extension(project, host)
+    extension_man:register_extension(project, host)
 
     -- 4. call extensions on load.
-    extensions.publish_event('on_project_open', current_project)
+    extension_man:call_extensions('on_project_open', current_project)
 end
 
 local function project_close_current()
     if current_project then
-
         -- 1. call extensions on close.
-        extensions.publish_event('on_project_close', current_project)
+        extension_man:call_extensions('on_project_close', current_project)
 
         -- 2. unregister the current project as a extension.
-        extensions.unregister_extension(current_project.name)
+        extension_man:unregister_extension(current_project.name)
 
         -- 3. unassign the current project.
         current_project = nil
@@ -170,10 +169,9 @@ end
 return M
 ]]
 
-
 local function render_project_template()
     local str = ''
-    local templates = extensions.read_project_templates()
+    local templates = extension_man:call_extensions 'config_example'
 
     local indent = '        '
     for _, conf_str in pairs(templates) do
@@ -189,7 +187,6 @@ local function render_project_template()
 
     return string.format(project_template, str)
 end
-
 
 local function register_commands()
     vim.cmd 'command! -nargs=* -complete=custom,ProjectsComplete PEdit   lua require("projects").project_edit(vim.fn.expand("<args>"))'
@@ -214,8 +211,6 @@ local function register_commands()
     ]]
 end
 
-
-
 -- ****************************************************************************
 -- Public API
 -- ****************************************************************************
@@ -235,7 +230,7 @@ function M.setup(opts)
 end
 
 function M.register_extension(extension)
-    extensions.register_extension(extension, M)
+    extension_man:register_extension(extension, M)
 end
 
 function M.config()
@@ -275,7 +270,6 @@ function M.project_open(project_name)
                 vim.notify('[project-config] - ' .. project.name)
             end, 100)
         end
-
     else
         vim.notify('Unable to load project: ' .. project_name)
     end
@@ -311,19 +305,18 @@ function M.project_delete(project_name)
         local project = load_project_from_file(project_name)
         local file_path = project_path(project_name)
         if vim.fn.delete(file_path) == 0 then
-
             -- delete project json file
             local persistent_path = project_persistent_path(project_name)
             vim.fn.delete(persistent_path)
 
             if project then
                 -- notify extensions
-                extensions.publish_event('on_project_delete', project)
+                extension_man:call_extensions('on_project_delete', project)
 
                 vim.notify('Deleted ' .. project.name)
             end
         else
-            vim.notify('Deletion failed!')
+            vim.notify 'Deletion failed!'
         end
     end
 end

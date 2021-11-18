@@ -19,7 +19,6 @@ local function run_build(build)
     local task = config.builds[build]
     if task then
         if task.executor == 'vim' then
-
             if task.compiler then
                 vim.cmd('compiler ' .. task.compiler)
             end
@@ -33,7 +32,6 @@ local function run_build(build)
             config.current_build_cancel = task.abortcommand
 
             vim.cmd(task.command)
-
         elseif task.executor == 'yabs' then
             if yabs then
                 config.current_build_cancel = task.abortcommand
@@ -146,7 +144,7 @@ end
 builds.build_list = build_list
 
 function builds.config_example()
-return [[
+    return [[
 builds = {
     task_name = {
         executor     = 'vim',

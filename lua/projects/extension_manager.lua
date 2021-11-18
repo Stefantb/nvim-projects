@@ -10,16 +10,23 @@ local utils = require 'projects.utils'
 --     on_project_close = function(project) ..
 --     on_project_delete = function(project) ..
 --
---     config_example = string
+--     config_example = function() .. -> string
 -- }
 --
 -- They are stored in a list, to ensure ordering, first come first served.
 -- unless _ext_priority is set, lower number makes for higher priority.
 -- ****************************************************************************
 
-local M = {
-    _extensions = {},
-}
+local M = {}
+
+function M:new()
+    local me = {
+        _extensions = {},
+    }
+    setmetatable(me, self)
+    self.__index = self
+    return me
+end
 
 local function priority_sort(a, b)
     local ap = a._ext_priority or 10
@@ -29,38 +36,37 @@ end
 
 -- Returns the extensions as a table keyed on name.
 -- The order is assigned as attribute _prj_id for introspection.
-function M.extensions()
+function M:extensions()
     local ret = {}
-    for i, extension in ipairs(M._extensions) do
+    for i, extension in ipairs(self._extensions) do
         ret[extension.name] = extension
         ret[extension.name]._prj_id = i
     end
     return ret
 end
 
-function M.register_extension(extension, host)
+function M:register_extension(extension, host)
     if utils.empty(extension.name) then
         print 'project extension must have a name!'
         return
     end
 
-    local plugs = M.extensions()
+    local plugs = self:extensions()
     if plugs[extension.name] then
         print('project extension with name ' .. extension.name .. ' already exists !')
         return
     end
 
-    table.insert(M._extensions, extension)
-    table.sort(M._extensions, priority_sort)
+    table.insert(self._extensions, extension)
+    table.sort(self._extensions, priority_sort)
 
     if extension.project_extension_init then
         extension.project_extension_init(host)
     end
 end
 
-function M.unregister_extension(extension_name)
-
-    local index = utils.array_find(M._extensions, function(plug)
+function M:unregister_extension(extension_name)
+    local index = utils.array_find(self._extensions, function(plug)
         return plug.name == extension_name
     end)
 
@@ -69,12 +75,12 @@ function M.unregister_extension(extension_name)
         return
     end
 
-    table.remove(M._extensions, index)
+    table.remove(self._extensions, index)
 end
 
-function M.call_extensions(method, ...)
+function M:call_extensions(method, ...)
     local ret = {}
-    for _, extension in ipairs(M._extensions) do
+    for _, extension in ipairs(self._extensions) do
         if extension[method] then
             local ok, result = pcall(extension[method], ...)
             ret[extension.name] = result
@@ -85,17 +91,5 @@ function M.call_extensions(method, ...)
     end
     return ret
 end
-
-function M.publish_event(method, ...)
-    M.call_extensions(method, ...)
-end
-
-function M.read_project_templates()
-    return M.call_extensions('config_example')
-end
-
--- function M.init()
---     M._extensions = {}
--- end
 
 return M

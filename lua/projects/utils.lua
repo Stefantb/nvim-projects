@@ -121,9 +121,9 @@ function M.table_merge(base, other, level)
 
     local do_next = next_level == nil or next_level > 0
 
-    for k,v in pairs(other) do
-        if do_next and type(v) == "table" then
-            if type(base[k] or false) == "table" then
+    for k, v in pairs(other) do
+        if do_next and type(v) == 'table' then
+            if type(base[k] or false) == 'table' then
                 M.table_merge(base[k] or {}, other[k] or {}, next_level)
             else
                 base[k] = v
@@ -145,7 +145,6 @@ function M.merge_first_level(base, source)
     return base
 end
 
-
 function M.array_find(array, predicate)
     for i, v in ipairs(array) do
         if predicate(v) then
@@ -157,8 +156,10 @@ end
 
 -- https://stackoverflow.com/questions/19326368/iterate-over-lines-including-blank-lines
 function M.lines(s)
-        if s:sub(-1)~="\n" then s=s.."\n" end
-        return s:gmatch("(.-)\n")
+    if s:sub(-1) ~= '\n' then
+        s = s .. '\n'
+    end
+    return s:gmatch '(.-)\n'
 end
 
 function M.table_get(table, selectors, default)
@@ -174,6 +175,57 @@ function M.table_get(table, selectors, default)
     end
 
     return cursor or default
+end
+
+function M.table_compare(o1, o2, ignore_mt)
+    if o1 == o2 then
+        return true
+    end
+    local o1Type = type(o1)
+    local o2Type = type(o2)
+    if o1Type ~= o2Type then
+        return false
+    end
+    if o1Type ~= 'table' then
+        return false
+    end
+
+    if not ignore_mt then
+        local mt1 = getmetatable(o1)
+        if mt1 and mt1.__eq then
+            --compare using built in method
+            return o1 == o2
+        end
+    end
+
+    local keySet = {}
+
+    for key1, value1 in pairs(o1) do
+        local value2 = o2[key1]
+        if value2 == nil or M.table_compare(value1, value2, ignore_mt) == false then
+            -- print('not eq: ' .. tostring(value1) .. ' '.. tostring(value2))
+            return false
+        end
+        keySet[key1] = true
+    end
+
+    for key2, _ in pairs(o2) do
+        if not keySet[key2] then
+            -- print('missing key')
+            return false
+        end
+    end
+    return true
+end
+
+function M.assert_table_equal(result, expected)
+    local _, eq = pcall(M.table_compare, result, expected, true)
+    if eq == true then
+        assert.is_true(eq)
+    else
+        print(' equal "' .. tostring(eq) .. '"')
+        assert.is_equal(expected, result)
+    end
 end
 
 return M

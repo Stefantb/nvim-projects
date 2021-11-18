@@ -50,7 +50,7 @@ function sessions.on_project_open(project)
     close()
 
     local my_config = project.extensions.sessions or {}
-    local session_name =  my_config.session_name or project.name
+    local session_name = my_config.session_name or project.name
     -- sessions.current_session_name = session_name
 
     if session_name then
@@ -72,7 +72,7 @@ end
 function sessions.on_project_delete(project)
     if sessions.host then
         local my_config = project.extensions.sessions or {}
-        local session_name =  my_config.session_name or project.name
+        local session_name = my_config.session_name or project.name
         if sessions.host.prompt_yes_no('Delete associated session: ' .. session_name) then
             delete(session_name)
         end
@@ -80,7 +80,7 @@ function sessions.on_project_delete(project)
 end
 
 function sessions.config_example()
-return [[
+    return [[
 'sessions' = {
     -- session_name = 'defaults to project name',
 },
@@ -88,4 +88,3 @@ return [[
 end
 
 return sessions
-

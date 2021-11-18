@@ -1,10 +1,13 @@
 -- vim.lsp.set_log_level("debug")
-local nvim_lsp = require('lspconfig')
-
+local nvim_lsp = require 'lspconfig'
 
 local function on_attach(client, bufnr)
-    local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
-    local function buf_set_option(...) vim.api.nvim_buf_set_option(bufnr, ...) end
+    local function buf_set_keymap(...)
+        vim.api.nvim_buf_set_keymap(bufnr, ...)
+    end
+    local function buf_set_option(...)
+        vim.api.nvim_buf_set_option(bufnr, ...)
+    end
 
     -- print('on attach!')
 
@@ -12,7 +15,7 @@ local function on_attach(client, bufnr)
     buf_set_option('omnifunc', 'v:lua.vim.lsp.omnifunc')
 
     -- Mappings.
-    local opts = { noremap=true, silent=true }
+    local opts = { noremap = true, silent = true }
 
     -- See `:help vim.lsp.*` for documentation on any of the below functions
     buf_set_keymap('n', 'gD', '<cmd>lua vim.lsp.buf.declaration()<CR>', opts)
@@ -34,13 +37,12 @@ local function on_attach(client, bufnr)
     buf_set_keymap('n', '<space>q', '<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>', opts)
     buf_set_keymap('n', '<space>f', '<cmd>lua vim.lsp.buf.formatting()<CR>', opts)
 
-    require "lsp_signature".on_attach({
+    require('lsp_signature').on_attach({
         bind = true, -- This is mandatory, otherwise border config won't get registered.
         handler_opts = {
-            border = "single"
-        }
+            border = 'single',
+        },
     }, bufnr)
-
 end
 
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -48,7 +50,6 @@ capabilities = require('cmp_nvim_lsp').update_capabilities(capabilities)
 
 -- Use an on_attach function to only map the following keys
 -- after the language server attaches to the current buffer
-
 
 -- Use a loop to conveniently call 'setup' on multiple servers and
 -- map buffer local keybindings when the language server attaches
@@ -62,7 +63,6 @@ capabilities = require('cmp_nvim_lsp').update_capabilities(capabilities)
 --     }
 -- end
 
-
 local special = {}
 
 -- ****************************************************************************
@@ -70,25 +70,25 @@ local special = {}
 -- ****************************************************************************
 function special.sumneko_lua()
     local system_name
-    if vim.fn.has("mac") == 1 then
-        system_name = "macOS"
-    elseif vim.fn.has("unix") == 1 then
-        system_name = "Linux"
-    elseif vim.fn.has('win32') == 1 then
-        system_name = "Windows"
+    if vim.fn.has 'mac' == 1 then
+        system_name = 'macOS'
+    elseif vim.fn.has 'unix' == 1 then
+        system_name = 'Linux'
+    elseif vim.fn.has 'win32' == 1 then
+        system_name = 'Windows'
     else
-        print("Unsupported system for sumneko")
+        print 'Unsupported system for sumneko'
     end
 
     local sumneko_root_path = '/home/stefantb/Dev/local-tools/lua-language-server'
-    local sumneko_binary = sumneko_root_path.."/bin/"..system_name.."/lua-language-server"
+    local sumneko_binary = sumneko_root_path .. '/bin/' .. system_name .. '/lua-language-server'
 
     local runtime_path = vim.split(package.path, ';')
-    table.insert(runtime_path, "lua/?.lua")
-    table.insert(runtime_path, "lua/?/init.lua")
+    table.insert(runtime_path, 'lua/?.lua')
+    table.insert(runtime_path, 'lua/?/init.lua')
 
     nvim_lsp.sumneko_lua.setup {
-        cmd = {sumneko_binary, "-E", sumneko_root_path .. "/main.lua"},
+        cmd = { sumneko_binary, '-E', sumneko_root_path .. '/main.lua' },
         settings = {
             Lua = {
                 runtime = {
@@ -99,11 +99,11 @@ function special.sumneko_lua()
                 },
                 diagnostics = {
                     -- Get the language server to recognize the `vim` global
-                    globals = {'vim'},
+                    globals = { 'vim' },
                 },
                 workspace = {
                     -- Make the server aware of Neovim runtime files
-                    library = vim.api.nvim_get_runtime_file("", true),
+                    library = vim.api.nvim_get_runtime_file('', true),
                 },
                 -- Do not send telemetry data containing a randomized but unique identifier
                 telemetry = {
@@ -112,7 +112,7 @@ function special.sumneko_lua()
             },
         },
         capabilities = capabilities,
-        on_attach = on_attach
+        on_attach = on_attach,
     }
 end
 
@@ -123,8 +123,7 @@ local util = require 'lspconfig/util'
 local p_util = require 'projects/utils'
 
 function special.ccls(ccls_config)
-
-    local cache_dir = vim.fn.expand('~/.cache/nvim/ccls')
+    local cache_dir = vim.fn.expand '~/.cache/nvim/ccls'
     local compdb_dir = ''
     local clang_settings = nil
     local lsp_root = nil
@@ -154,26 +153,26 @@ function special.ccls(ccls_config)
     -- }
 
     nvim_lsp.ccls.setup {
-        cmd = {'ccls', '--log-file='..log_path, '-v=1'},
+        cmd = { 'ccls', '--log-file=' .. log_path, '-v=1' },
         init_options = {
-            cache = {directory = cache_dir},
+            cache = { directory = cache_dir },
             compilationDatabaseDirectory = compdb_dir,
-            client = {snippetSupport = true},
+            client = { snippetSupport = true },
             highlight = { lsRanges = true },
             clang = clang_settings,
         },
         root_dir = function(fname)
-            return lsp_root or util.root_pattern('compile_commands.json', '.ccls', "compile_flags.txt", ".git")(fname)
-            or util.path.dirname(fname)
+            return lsp_root
+                or util.root_pattern('compile_commands.json', '.ccls', 'compile_flags.txt', '.git')(fname)
+                or util.path.dirname(fname)
         end,
         capabilities = capabilities,
         on_attach = on_attach,
     }
 
-    vim.cmd('command! ClearCclsCache execute ":! rm -r '.. cache_dir .. '/*"')
-    vim.cmd('command! CclsLog execute ":e '.. log_path .. '"')
+    vim.cmd('command! ClearCclsCache execute ":! rm -r ' .. cache_dir .. '/*"')
+    vim.cmd('command! CclsLog execute ":e ' .. log_path .. '"')
 end
-
 
 -- ****************************************************************************
 -- clangd
@@ -203,10 +202,9 @@ end
 -- ****************************************************************************
 --
 -- ****************************************************************************
-local putils = require'projects.utils'
+local putils = require 'projects.utils'
 
 local function generic(lsp, config)
-
     config = config or {}
 
     local def = {
@@ -226,11 +224,9 @@ local function configure(lsp, config)
     end
 end
 
-
 local function restart_lsp()
     vim.cmd ':LspRestart'
 end
-
 
 local function do_configure(config)
     for lsp, config_ in pairs(config) do
@@ -258,7 +254,7 @@ local function un_configure(lsp)
     end
 
     nvim_lsp[lsp].setup {
-        autostart = false
+        autostart = false,
     }
 end
 
@@ -272,7 +268,7 @@ end
 -- Publid API
 -- ****************************************************************************
 local lspconfig = {
-    name = 'lspconfig'
+    name = 'lspconfig',
 }
 
 function lspconfig.project_extension_init(host)
@@ -298,7 +294,7 @@ function lspconfig.on_project_close(project)
 end
 
 function lspconfig.config_example()
-return [[
+    return [[
 lspconfig = {
     ccls = {
         lsp_root = 'repo root',
@@ -317,4 +313,3 @@ lspconfig = {
 end
 
 return lspconfig
-
