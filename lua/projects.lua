@@ -38,57 +38,15 @@ end
 -- ****************************************************************************
 -- Project object
 -- ****************************************************************************
-local Project = {}
+local Config = {}
 
-function Project:new(data)
+function Config:new(data)
     data = data or {}
     setmetatable(data, self)
     self.__index = self
+    self.extensions = self.extensions or {}
     return data
 end
-
-function Project:get_sub_sub(ext, sub_key, sub_sub_key, default)
-    if self.extensions[ext] then
-        if self.extensions[ext][sub_key] then
-            if self.extensions[ext][sub_key][sub_sub_key] then
-                return self.extensions[ext][sub_key][sub_sub_key]
-            end
-        end
-    end
-
-    if config.extensions[ext] then
-        if config.extensions[ext][sub_key] then
-            if config.extensions[ext][sub_key][sub_sub_key] then
-                return config.extensions[ext][sub_key][sub_sub_key]
-            end
-        end
-    end
-    return default
-end
-
-function Project:get_sub(ext, sub_key, default)
-    if self.extensions[ext] then
-        if self.extensions[ext][sub_key] then
-            return self.extensions[ext][sub_key]
-        end
-    end
-
-    if config.extensions[ext] then
-        if config.extensions[ext][sub_key] then
-            return config.extensions[ext][sub_key]
-        end
-    end
-    return default
-end
-
--- function Project:get(key, default)
---     if self[key] then
---         return self[key]
---     elseif config[key] then
---         return config[key]
---     end
---     return default
--- end
 
 -- ****************************************************************************
 -- Project management
@@ -173,7 +131,7 @@ local function load_project_from_file(project_name)
     end
 
     if project_data then
-        local project = Project:new(project_data)
+        local project = Config:new(project_data)
 
         -- set some defaults
         project.name = project_name
@@ -281,18 +239,11 @@ function M.register_extension(extension)
 end
 
 function M.config()
-    return utils.read_only(config)
+    return Config:new(config)
 end
 
 function M.current_project()
     return current_project
-end
-
-function M.current_project_or_empty()
-    if not current_project then
-        return Project:new()
-    end
-    return M.current_project()
 end
 
 function M.print_project_template()

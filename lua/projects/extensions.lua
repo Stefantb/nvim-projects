@@ -72,24 +72,27 @@ function M.unregister_extension(extension_name)
     table.remove(M._extensions, index)
 end
 
-function M.publish_event(method, ...)
-    for _, extension in ipairs(M._extensions) do
-        if extension[method] then
-            extension[method](...)
-        end
-    end
-end
-
-function M.read_project_templates()
+function M.call_extensions(method, ...)
     local ret = {}
     for _, extension in ipairs(M._extensions) do
-        if extension.config_example then
-            ret[extension.name] = extension.config_example
+        if extension[method] then
+            local ok, result = pcall(extension[method], ...)
+            ret[extension.name] = result
+            if not ok then
+                print('error calling extension ' .. extension.name .. '.' .. method .. 'returned : ' .. result)
+            end
         end
     end
     return ret
 end
 
+function M.publish_event(method, ...)
+    M.call_extensions(method, ...)
+end
+
+function M.read_project_templates()
+    return M.call_extensions('config_example')
+end
 
 -- function M.init()
 --     M._extensions = {}

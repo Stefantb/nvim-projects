@@ -112,6 +112,29 @@ function M.empty(string)
     return string == nil or string == ''
 end
 
+function M.table_merge(base, other, level)
+    local next_level = level
+
+    if next_level then
+        next_level = next_level - 1
+    end
+
+    local do_next = next_level == nil or next_level > 0
+
+    for k,v in pairs(other) do
+        if do_next and type(v) == "table" then
+            if type(base[k] or false) == "table" then
+                M.table_merge(base[k] or {}, other[k] or {}, next_level)
+            else
+                base[k] = v
+            end
+        else
+            base[k] = v
+        end
+    end
+    return base
+end
+
 function M.merge_first_level(base, source)
     if source then
         for k, v in pairs(source) do
@@ -122,20 +145,6 @@ function M.merge_first_level(base, source)
     return base
 end
 
-function M.table_merge(t1, t2)
-    for k,v in pairs(t2) do
-        if type(v) == "table" then
-            if type(t1[k] or false) == "table" then
-                M.table_merge(t1[k] or {}, t2[k] or {})
-            else
-                t1[k] = v
-            end
-        else
-            t1[k] = v
-        end
-    end
-    return t1
-end
 
 function M.array_find(array, predicate)
     for i, v in ipairs(array) do
@@ -150,6 +159,21 @@ end
 function M.lines(s)
         if s:sub(-1)~="\n" then s=s.."\n" end
         return s:gmatch("(.-)\n")
+end
+
+function M.table_get(table, selectors, default)
+    cursor = table
+    for _, selector in ipairs(selectors) do
+        if type(cursor) == 'table' then
+            cursor = cursor[selector]
+        else
+            -- we have an unresolved selector so we bail out.
+            cursor = nil
+            break
+        end
+    end
+
+    return cursor or default
 end
 
 return M

@@ -34,11 +34,12 @@ local function delete(session_name)
 end
 
 -- ****************************************************************************
---
+-- Public API
 -- ****************************************************************************
 local sessions = {
     name = 'sessions',
     _ext_priority = 10000, -- we want to be last
+    -- current_session_name = '',
 }
 
 function sessions.project_extension_init(host)
@@ -48,21 +49,15 @@ end
 function sessions.on_project_open(project)
     close()
 
-    local default_cfg = {
-        sessions = {
-            session_name = project.name
-        }
-    }
+    local my_config = project.extensions.sessions or {}
+    local session_name =  my_config.session_name or project.name
+    -- sessions.current_session_name = session_name
 
-    -- update the project
-    project.extensions = utils.table_merge(project.extensions, default_cfg)
-
-    local psn = project:get_sub('sessions', 'session_name', project.name )
-    if psn then
-        if exists(psn) then
-            load(psn)
+    if session_name then
+        if exists(session_name) then
+            load(session_name)
         else
-            save(psn)
+            save(session_name)
         end
     end
     -- Because the session can possibly cd to a different directory
@@ -71,22 +66,26 @@ end
 
 function sessions.on_project_close()
     close()
+    -- sessions.current_session_name = ''
 end
 
 function sessions.on_project_delete(project)
     if sessions.host then
-        local psn = project:get_sub('sessions', 'session_name', project.name )
-        if sessions.host.prompt_yes_no('Delete associated session: ' .. psn) then
-            delete(psn)
+        local my_config = project.extensions.sessions or {}
+        local session_name =  my_config.session_name or project.name
+        if sessions.host.prompt_yes_no('Delete associated session: ' .. session_name) then
+            delete(session_name)
         end
     end
 end
 
-sessions.config_example = [[
+function sessions.config_example()
+return [[
 'sessions' = {
     -- session_name = 'defaults to project name',
 },
 ]]
+end
 
 return sessions
 

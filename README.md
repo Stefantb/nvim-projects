@@ -1,6 +1,6 @@
 # nvim-projects
 
-A neovim plugin to provide the concept of a project.
+A neovim extension to provide the concept of a project.
 
 ## Why A Project Plugin
 
@@ -21,11 +21,11 @@ Why is that important?
 
 Well I want ccls to create isolated caches for each project, because although they mostly
 build the same sources, preprocessor definitions and build flags are very different.
-It does get tired to clear the cache each time I switch projects. 
+It does get tired to clear the cache each time I switch projects.
 
 I have also been very content with running builds in a terminal besides my editor and that
 works fine. I do miss running them in the editor for when things go wrong and I get the errors in
-the quick fix list. 
+the quick fix list.
 
 And I dont want to mess with `exrc`.
 
@@ -34,7 +34,7 @@ I think its time to attempt scratching this itch, and have fun in the way.
 
 ## How does it work
 
-The idea is to make a very small and simple plugin that basically
+The idea is to make a very small and simple extension that basically
 manages opening, closing and CRUD for projects.
 Internally it also provides ways to query settings and subscribe to lifecycle events such as
 `on_project_open`, `on_project_close` and `on_project_delete`.
@@ -52,8 +52,8 @@ The basic project infrastructure does the following:
     - [X] Subscribe to lifecycle events.
     - [X] Query settings.
 
-### Default project plugins
-On its own the project infrastructure does nothing interesting so there are some project plugins
+### Default project extensions
+On its own the project infrastructure does nothing interesting so there are some project extensions
 that come built in.
 
 ##### Sessions
@@ -83,7 +83,7 @@ WIP....
 use {
     'stefantb/nvim-projects',
     requires = {
-        'mhinz/vim-startify', 
+        'mhinz/vim-startify',
         'tpope/vim-dispatch'  -- not really a hard requirement.
     },
 }
@@ -92,16 +92,14 @@ use {
 
 ## Usage
 
-Initialize the plugin and the global settings by calling setup.
-Its enough to call setup with an empty table.
-All the keys and values you put into this table become the global defaults that projects can override.
-Default plugins can be disabled passing `plugins = {<plug name> = false}`.
+Initialize the extension and the global settings by calling setup.
+Theese are the defaults:
 
 ``` lua
 require("projects").setup{
     project_dir = '~/.config/nvim/projects/',
     silent = false,
-    plugins = { builds = true, sessions = true },
+    extensions = {},
 }
 
 ```
@@ -151,15 +149,15 @@ Remember to try this.
 
 ## Plugin API
 
-Plugins can be registered using the `register_plugin` function.
+Plugins can be registered using the `register_extension` function.
 Implement any of the callback functions to receive the events.
 
-When a plugin is registered, `project_plugin_init` is immediately called with
-the plugin host as the argument. The plugin host is the project plugin itself.
+When an extension is registered, `project_extension_init` is immediately called with
+the extension host as the argument. The extension host is the project extension itself.
 ``` lua
-require("projects").register_plugin{
+require("projects").register_extension{
     name = 'a unique name',
-    project_plugin_init = function(plugin_host)end,
+    project_extension_init = function(extension_host)end,
     on_project_open = function(project)end,
     on_project_close = function(project)end,
     on_project_delete = function(project)end
@@ -176,31 +174,30 @@ a project you can edit to your hearts content and then save.
 Here we see the way build tasks are defined and an example of how vim-dispatch and yabs can be used.
 They are distinguished by the executor key.
 
-Projects are automatically registered as plugins.
+Projects are automatically registered as extensions.
 
 ``` lua
 local M = {
     root_dir = 'This is mandatory.',
-    -- lsp_config = {}
-    -- session_name = 'defaults to project name.'
 
-    build_tasks = {
-        task_name = {
-            executor     = 'vim',
-            compiler     = 'gcc',
-            makeprg      = 'make',
-            command      = 'Make release',
-            abortcommand = 'AbortDispatch'
-
+    extensions = {
+        sessions = {
+            session_name = 'defaults to project name.'
         },
-        task_name2 = {
-            executor = 'yabs',
-            command = 'gcc main.c -o main',
-            output = 'quickfix',
-            opts = {
+        lspconfig = {
+            ccls = {},
+        },
+        builds = {
+            task_name = {
+                executor     = 'vim',
+                compiler     = 'gcc',
+                makeprg      = 'make',
+                command      = 'Make release',
+                abortcommand = 'AbortDispatch'
+
             },
         },
-    }
+    },
 }
 
 function M.on_project_open()
@@ -219,7 +216,7 @@ return M
 
 ``` lua
 
-plugin_host = {
+extension_host = {
 
     -- Returns the global config as a read only table.
     config = function() end,
