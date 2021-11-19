@@ -47,10 +47,10 @@ end
 -- ****************************************************************************
 --
 -- ****************************************************************************
-local persistent = {}
-persistent.__index = persistent
+local Persistent = {}
+Persistent.__index = Persistent
 
-function persistent:create(path)
+function Persistent:create(path)
     local new = {} -- our new object
     setmetatable(new, self) -- make Persistent handle lookup
 
@@ -61,14 +61,14 @@ function persistent:create(path)
     return new
 end
 
-function persistent:try_load()
+function Persistent:try_load()
     if self.path then
         self.state = load_json(self.path) or {}
         self.loaded = true
     end
 end
 
-function persistent:try_save()
+function Persistent:try_save()
     if vim.fn.filereadable(self.path) == 0 then
         -- print('file does not exist: ' .. path )
     else
@@ -86,14 +86,14 @@ function persistent:try_save()
     end
 end
 
-function persistent:get(key, default)
+function Persistent:get(key, default)
     if not self.loaded then
         self:try_load()
     end
     return self.state[key] or default
 end
 
-function persistent:set(key, value)
+function Persistent:set(key, value)
     -- print('p.set '..key..':'..value)
     local before = self.state[key]
     if value ~= before then
@@ -102,4 +102,4 @@ function persistent:set(key, value)
     end
 end
 
-return persistent
+return Persistent

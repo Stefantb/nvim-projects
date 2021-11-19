@@ -1,4 +1,5 @@
 local utils = require 'projects.utils'
+local Config = require 'projects.config'
 
 local function to_dict(list)
     local ret = {}
@@ -17,8 +18,8 @@ describe('builds', function()
         }
 
         local host = {
-            config = function()
-                return {
+            global_config = function()
+                return Config:new {
                     extensions = {
                         builds = utils.deepcopy(globals),
                     },
@@ -37,7 +38,7 @@ describe('builds', function()
         it('has the union of global and project build tasks after on_project_open', function()
             builds.project_extension_init(host)
 
-            local t_proj = {
+            local t_proj = Config:new {
                 extensions = {
                     builds = {
                         two = {}, -- test overlap

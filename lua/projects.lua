@@ -1,6 +1,7 @@
-local persistent = require 'projects.persistent'
+local Persistent = require 'projects.persistent'
 local utils = require 'projects.utils'
 local extension_man = require('projects.extension_manager'):new()
+local Config = require 'projects.config'
 
 -- ****************************************************************************
 --
@@ -33,19 +34,6 @@ end
 
 local function empty(string)
     return string == nil or string == ''
-end
-
--- ****************************************************************************
--- Project object
--- ****************************************************************************
-local Config = {}
-
-function Config:new(data)
-    data = data or {}
-    setmetatable(data, self)
-    self.__index = self
-    self.extensions = self.extensions or {}
-    return data
 end
 
 -- ****************************************************************************
@@ -134,7 +122,7 @@ local function load_project_from_file(project_name)
 
         -- set some defaults
         project.name = project_name
-        project.persistent = persistent:create(project_persistent_path(project_name))
+        project.persistent = Persistent:create(project_persistent_path(project_name))
 
         if not project.extensions then
             project.extensions = {}
@@ -224,7 +212,7 @@ local M = {
 function M.setup(opts)
     config = utils.merge_first_level(default_config(), opts)
 
-    config.persistent = persistent:create(config.project_dir .. '/__projects__.json')
+    config.persistent = Persistent:create(config.project_dir .. '/__projects__.json')
 
     register_commands()
 end
@@ -233,12 +221,12 @@ function M.register_extension(extension)
     extension_man:register_extension(extension, M)
 end
 
-function M.config()
+function M.global_config()
     return Config:new(config)
 end
 
-function M.current_project()
-    return current_project
+function M.current_project_config()
+    return Config:new(current_project)
 end
 
 function M.print_project_template()
@@ -351,7 +339,7 @@ function M.projects_complete(_, _, _)
 end
 
 function M.show_current_project()
-    print(vim.inspect(M.current_project()))
+    print(vim.inspect(current_project))
 end
 
 function M.projects_startify_list()

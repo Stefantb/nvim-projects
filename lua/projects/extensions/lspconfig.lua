@@ -273,21 +273,21 @@ local lspconfig = {
 
 function lspconfig.project_extension_init(host)
     lspconfig.host = host
-    local myconf = host.config().extensions.lspconfig or {}
+    local myconf = host.global_config():ext_config('lspconfig', {})
     do_configure(myconf)
 end
 
 function lspconfig.on_project_open(project)
-    local myconf = project.extensions.lspconfig or {}
+    local myconf = project:ext_config('lspconfig', {})
     do_configure(myconf)
 end
 
 function lspconfig.on_project_close(project)
-    local myconf = project.extensions.lspconfig or {}
+    local myconf = project:ext_config('lspconfig', {})
     do_un_configure(myconf)
 
     -- reinit with the global settings for servers that are in both
-    myconf = lspconfig.host.config().extensions.lspconfig or {}
+    myconf = lspconfig.host.global_config():ext_config('lspconfig', {})
     vim.defer_fn(function()
         do_configure(myconf)
     end, 50)

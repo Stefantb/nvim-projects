@@ -56,23 +56,19 @@ local function update_build_tasks()
     config.builds = {}
 
     -- Start with the globals.
-    local global_tasks = config.host.config().extensions.builds
-    if global_tasks then
-        for k, v in pairs(global_tasks) do
-            config.builds[k] = v
-        end
+    local global_tasks = config.host.global_config():ext_config('builds', {})
+    for k, v in pairs(global_tasks) do
+        config.builds[k] = v
     end
 
     -- Update with project specific ones.
     if config.current_project then
-        local prj_builds = config.current_project.extensions.builds
-        if prj_builds then
-            for k, v in pairs(prj_builds) do
-                if config.builds[k] then
-                    print('Warning project build task: ' .. k .. ' overrides a global one.')
-                end
-                config.builds[k] = v
+        local prj_builds = config.current_project:ext_config('builds', {})
+        for k, v in pairs(prj_builds) do
+            if config.builds[k] then
+                print('Warning project build task: ' .. k .. ' overrides a global one.')
             end
+            config.builds[k] = v
         end
     end
 end
