@@ -1,5 +1,5 @@
-local utils = require 'projects.utils'
-local yabs = require 'yabs'
+    local utils = require 'projects.utils'
+-- local yabs = require 'yabs'
 
 -- ****************************************************************************
 --
@@ -15,7 +15,7 @@ local function build_list()
 end
 
 local function run_build(build)
-    -- print('build using ' .. build)
+    print('build using ' .. build)
     local task = config.builds[build]
     if task then
         if task.executor == 'vim' then
@@ -33,12 +33,12 @@ local function run_build(build)
 
             vim.cmd(task.command)
         elseif task.executor == 'yabs' then
-            if yabs then
-                config.current_build_cancel = task.abortcommand
-                yabs.run_command(task.command, task.output, task.options or {})
-            else
-                print "require'yabs' == nil"
-            end
+            -- if yabs then
+            --     config.current_build_cancel = task.abortcommand
+            --     yabs.run_command(task.command, task.output, task.options or {})
+            -- else
+            --     print "require'yabs' == nil"
+            -- end
         end
     end
 end
@@ -73,6 +73,18 @@ local function update_build_tasks()
     end
 end
 
+local function register_commands()
+    vim.cmd 'command! -nargs=* -complete=custom,BuildsComplete PBuild           lua require("projects.extensions.builds").project_build(vim.fn.expand("<args>"))'
+    vim.cmd 'command! -nargs=* -complete=custom,BuildsComplete PBuildSetDefault lua require("projects.extensions.builds").project_build_set_default(vim.fn.expand("<args>"))'
+    vim.cmd 'command! -nargs=*                                 PBuildCancel     lua require("projects.extensions.builds").project_build_cancel()'
+
+    vim.cmd [[
+    fun BuildsComplete(A,L,P)
+    return luaeval('require("projects.extensions.builds").builds_complete(A, L, P)')
+    endfun
+    ]]
+end
+
 -- ****************************************************************************
 -- Public API
 -- ****************************************************************************
@@ -83,6 +95,8 @@ local builds = {
 function builds.project_extension_init(host)
     config.host = host
     update_build_tasks()
+
+    register_commands()
 end
 
 function builds.on_project_open(current_project)

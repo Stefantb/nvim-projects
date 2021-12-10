@@ -162,6 +162,7 @@ function special.ccls(ccls_config)
             clang = clang_settings,
         },
         root_dir = function(fname)
+            -- print('lsp for file', fname)
             return lsp_root
                 or util.root_pattern('compile_commands.json', '.ccls', 'compile_flags.txt', '.git')(fname)
                 or util.path.dirname(fname)
