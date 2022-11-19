@@ -5,6 +5,7 @@ local function on_attach(client, bufnr)
     local function buf_set_keymap(...)
         vim.api.nvim_buf_set_keymap(bufnr, ...)
     end
+
     local function buf_set_option(...)
         vim.api.nvim_buf_set_option(bufnr, ...)
     end
@@ -21,7 +22,6 @@ local function on_attach(client, bufnr)
     buf_set_keymap('n', 'gD', '<cmd>lua vim.lsp.buf.declaration()<CR>', opts)
     buf_set_keymap('n', 'gd', '<cmd>lua vim.lsp.buf.definition()<CR>', opts)
     buf_set_keymap('n', 'K', '<cmd>lua vim.lsp.buf.hover()<CR>', opts)
-    -- buf_set_keymap('n', 'K', '<cmd>lua require(\'lspsaga.hover\').render_hover_doc()<CR>', opts)
     buf_set_keymap('n', 'gi', '<cmd>lua vim.lsp.buf.implementation()<CR>', opts)
     buf_set_keymap('n', '<C-m>', '<cmd>lua vim.lsp.buf.signature_help()<CR>', opts)
     buf_set_keymap('n', '<space>wa', '<cmd>lua vim.lsp.buf.add_workspace_folder()<CR>', opts)
@@ -31,11 +31,14 @@ local function on_attach(client, bufnr)
     buf_set_keymap('n', '<space>rn', '<cmd>lua vim.lsp.buf.rename()<CR>', opts)
     buf_set_keymap('n', '<space>ca', '<cmd>lua vim.lsp.buf.code_action()<CR>', opts)
     buf_set_keymap('n', 'gr', '<cmd>lua vim.lsp.buf.references()<CR>', opts)
-    buf_set_keymap('n', '<space>e', '<cmd>lua vim.lsp.diagnostic.show_line_diagnostics()<CR>', opts)
-    buf_set_keymap('n', '[d', '<cmd>lua vim.lsp.diagnostic.goto_prev()<CR>', opts)
-    buf_set_keymap('n', ']d', '<cmd>lua vim.lsp.diagnostic.goto_next()<CR>', opts)
-    buf_set_keymap('n', '<space>q', '<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>', opts)
-    buf_set_keymap('n', '<space>f', '<cmd>lua vim.lsp.buf.formatting()<CR>', opts)
+    buf_set_keymap('n', '<space>e', '<cmd>lua vim.diagnostic.show_line_diagnostics()<CR>', opts)
+    buf_set_keymap('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
+    buf_set_keymap('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
+    buf_set_keymap('n', '<space>q', '<cmd>lua vim.diagnostic.set_loclist()<CR>', opts)
+    buf_set_keymap('n', '<space>f', '<cmd>lua vim.lsp.buf.format { async = true }<CR>', opts)
+    buf_set_keymap('x', '<space>f', '<cmd>lua vim.lsp.buf.range_formatting()<CR>', opts)
+
+    -- print(vim.inspect(client.resolved_capabilities))
 
     require('lsp_signature').on_attach({
         bind = true, -- This is mandatory, otherwise border config won't get registered.
@@ -45,8 +48,8 @@ local function on_attach(client, bufnr)
     }, bufnr)
 end
 
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities = require('cmp_nvim_lsp').update_capabilities(capabilities)
+--[[ local capabilities = vim.lsp.protocol.make_client_capabilities() ]]
+local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
 -- Use an on_attach function to only map the following keys
 -- after the language server attaches to the current buffer
@@ -69,16 +72,16 @@ local special = {}
 -- sumneko lua
 -- ****************************************************************************
 function special.sumneko_lua()
-    local system_name
-    if vim.fn.has 'mac' == 1 then
-        system_name = 'macOS'
-    elseif vim.fn.has 'unix' == 1 then
-        system_name = 'Linux'
-    elseif vim.fn.has 'win32' == 1 then
-        system_name = 'Windows'
-    else
-        print 'Unsupported system for sumneko'
-    end
+    local system_name = ''
+    --[[ if vim.fn.has 'mac' == 1 then ]]
+    --[[     system_name = 'macOS' ]]
+    --[[ elseif vim.fn.has 'unix' == 1 then ]]
+    --[[     system_name = 'Linux' ]]
+    --[[ elseif vim.fn.has 'win32' == 1 then ]]
+    --[[     system_name = 'Windows' ]]
+    --[[ else ]]
+    --[[     print 'Unsupported system for sumneko' ]]
+    --[[ end ]]
 
     local sumneko_root_path = '/home/stefantb/Dev/local-tools/lua-language-server'
     local sumneko_binary = sumneko_root_path .. '/bin/' .. system_name .. '/lua-language-server'
@@ -108,6 +111,15 @@ function special.sumneko_lua()
                 -- Do not send telemetry data containing a randomized but unique identifier
                 telemetry = {
                     enable = false,
+                },
+                format = {
+                    enable = true,
+                    -- Put format options here
+                    -- NOTE: the value should be STRING!!
+                    defaultConfig = {
+                        indent_style = "space",
+                        indent_size = "4",
+                    }
                 },
             },
         },
@@ -199,6 +211,46 @@ end
 --     on_attach = on_attach,
 --     capabilities = capabilities,
 -- }
+
+-- ****************************************************************************
+-- null ls
+-- ****************************************************************************
+function special.null_ls()
+    local null_ls = require 'null-ls'
+
+    local filetypes = {
+        'css',
+        'scss',
+        'less',
+        'html',
+        'json',
+        'yaml',
+        'vue',
+        'typescript',
+        'markdown',
+        'graphql',
+        'lua',
+    }
+
+    null_ls.setup {
+        debug = false,
+        sources = {
+            null_ls.builtins.formatting.prettier.with {
+                filetypes = filetypes,
+            },
+            null_ls.builtins.formatting.stylua.with {
+                filetypes = filetypes,
+            },
+            null_ls.builtins.diagnostics.eslint.with {
+                filetypes = filetypes,
+            },
+            null_ls.builtins.completion.spell.with {
+                filetypes = filetypes,
+            },
+        },
+        on_attach = on_attach,
+    }
+end
 
 -- ****************************************************************************
 --

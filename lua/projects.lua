@@ -138,7 +138,7 @@ end
 
 local project_template = [[
 local M = {
-    root_dir = 'This is mandatory.',
+    root_dir = '%s',
     -- silent = false,
     -- session_name = 'defaults to project name.'
 
@@ -173,7 +173,7 @@ local function render_project_template()
         end
     end
 
-    return string.format(project_template, str)
+    return string.format(project_template, vim.fn.getcwd(), str)
 end
 
 local function register_commands()
