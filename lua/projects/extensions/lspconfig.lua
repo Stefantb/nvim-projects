@@ -71,7 +71,7 @@ local special = {}
 -- ****************************************************************************
 -- sumneko lua
 -- ****************************************************************************
-function special.sumneko_lua()
+function special.lua_ls()
     local system_name = ''
     --[[ if vim.fn.has 'mac' == 1 then ]]
     --[[     system_name = 'macOS' ]]
@@ -90,7 +90,7 @@ function special.sumneko_lua()
     table.insert(runtime_path, 'lua/?.lua')
     table.insert(runtime_path, 'lua/?/init.lua')
 
-    nvim_lsp.sumneko_lua.setup {
+    nvim_lsp.lua_ls.setup {
         cmd = { sumneko_binary, '-E', sumneko_root_path .. '/main.lua' },
         settings = {
             Lua = {
@@ -282,6 +282,7 @@ local function restart_lsp()
 end
 
 local function do_configure(config)
+    --[[ print(vim.inspect(config)) ]]
     for lsp, config_ in pairs(config) do
         configure(lsp, config_)
     end
