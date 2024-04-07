@@ -336,6 +336,15 @@ function M.show_current_project()
     print(vim.inspect(current_project))
 end
 
+function M.projects_startify_session_dir()
+
+    local hostname = vim.fn.hostname()
+    if hostname then
+        hostname = hostname .. '/'
+    end
+    return '~/.config/nvim/session/' .. hostname
+end
+
 function M.projects_startify_list()
     local list = {}
     for i, project in ipairs(project_list()) do
