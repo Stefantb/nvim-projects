@@ -10,8 +10,12 @@ local current_project = nil
 local config = {}
 
 local function default_config()
+    local hostname = vim.fn.hostname()
+    if hostname then
+        hostname = hostname .. '/'
+    end
     return {
-        project_dir = '~/.config/nvim/projects/',
+        project_dir = '~/.config/nvim/projects/' .. hostname,
         silent = false,
         extensions = {},
     }
