@@ -219,6 +219,10 @@ function M.global_config()
     return Config:new(config)
 end
 
+function M.is_project_open()
+    return current_project ~= nil
+end
+
 function M.current_project_config()
     return Config:new(current_project)
 end

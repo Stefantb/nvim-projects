@@ -105,6 +105,7 @@ function builds.on_project_open(current_project)
 end
 
 function builds.on_project_close()
+    print('Closing builds')
     config.current_project = nil
     update_build_tasks()
 end

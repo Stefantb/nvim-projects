@@ -4,6 +4,7 @@ local utils = require 'projects.utils'
 --
 -- ****************************************************************************
 local function close()
+    print('Closing current session')
     vim.cmd "execute 'SClose'"
 end
 
