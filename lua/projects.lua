@@ -24,12 +24,76 @@ end
 -- ****************************************************************************
 -- Utilities
 -- ****************************************************************************
+local function find_project_file(directory)
+    local scan = vim.loop.fs_scandir(directory)
+    while true do
+        local name, typ = vim.loop.fs_scandir_next(scan)
+        if name == nil then
+            break
+        end
+
+        if typ == 'file' then
+            m = name:match('%g*project.lua')
+            if m and m ~= '' then
+                return  name
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Recursively scan for a .git folder or a .nvimproject folder until we reach the root of the filesystem
+local function find_project_folder(directory)
+    local scan = vim.loop.fs_scandir(directory)
+    while true do
+        local name, typ = vim.loop.fs_scandir_next(scan)
+        if name == nil then
+            break
+        end
+
+        if typ == 'directory' then
+            if name == '.nvimproject' then
+                return directory .. '/' .. name
+            end
+        end
+    end
+
+    return nil
+end
+
+local function try_find_local_project()
+    local directory = vim.fn.getcwd()
+    while directory do
+        local project_dir = find_project_folder(directory)
+        if project_dir then
+            local project_file = find_project_file(project_dir)
+            if project_file then
+                return {
+                    project_dir = project_dir,
+                    project_file = project_file,
+                    project_name = project_file:match '(.+)%.lua$',
+                }
+            end
+        end
+        directory = vim.fn.fnamemodify(directory, ':h')
+        if directory == '/' then
+            break
+        end
+    end
+    return nil
+end
 local function ensure_projects_dir()
     return utils.ensure_dir(config.project_dir)
 end
 
-local function project_path(project)
-    return vim.fn.expand(config.project_dir .. project .. '.lua')
+local function project_path(project_name)
+    local local_project = try_find_local_project()
+    if local_project and project_name == local_project.project_name then
+        local file_path = local_project.project_dir .. '/' .. local_project.project_file
+        return vim.fn.expand(file_path)
+    end
+    return vim.fn.expand(config.project_dir .. project_name .. '.lua')
 end
 
 local function project_persistent_path(project_name)
@@ -47,6 +111,12 @@ local function project_list()
     local dir = ensure_projects_dir()
 
     local projects = {}
+
+    local local_project = try_find_local_project()
+    if local_project then
+        projects[#projects + 1] = local_project.project_name
+    end
+
     local scan = vim.loop.fs_scandir(dir)
     while true do
         local name, typ = vim.loop.fs_scandir_next(scan)

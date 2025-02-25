@@ -228,4 +228,29 @@ function M.assert_table_equal(result, expected)
     end
 end
 
+function M.is_win()
+    return package.config:sub(1, 1) == '\\'
+end
+
+function M.get_path_separator()
+    if M.is_win() then
+        return '\\'
+    end
+    return '/'
+end
+
+function M.script_path()
+    local str = debug.getinfo(2, 'S').source:sub(2)
+    if M.is_win() then
+        str = str:gsub('/', '\\')
+    end
+    return str:match('(.*' .. M.get_path_separator() .. ')')
+end
+
+function M.local_project_path(script_path)
+    -- print('script_path: ' .. script_path)
+    local mypath = vim.fn.fnamemodify(vim.fn.fnamemodify(script_path, ':h'), ':h')
+    return mypath
+end
+
 return M
