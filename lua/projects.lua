@@ -52,9 +52,16 @@ local function find_project_folder(directory)
             break
         end
 
-        if typ == 'directory' then
+        if typ == 'directory' or typ == 'link' then
             if name == '.nvimproject' then
-                return directory .. '/' .. name
+                if typ == 'link' then
+                    local stuff = vim.loop.fs_stat(directory .. '/' .. name)
+                    if stuff.type == 'directory' then
+                        return directory .. '/' .. name
+                    end
+                else
+                    return directory .. '/' .. name
+                end
             end
         end
     end
@@ -124,6 +131,7 @@ local function project_list()
             break
         end
         if typ == 'file' then
+
             local striped_name = name:match '(.+)%.lua$'
             if striped_name and striped_name ~= '' then
                 projects[#projects + 1] = striped_name
