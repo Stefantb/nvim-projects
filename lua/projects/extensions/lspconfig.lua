@@ -350,17 +350,8 @@ end
 function lspconfig.config_example()
     return [[
 lspconfig = {
-    ccls = {
-        lsp_root = 'repo root',
-        cache_subdir = 'namespace for cache',
-        compdb_dir = 'where is the compdb stored if not in the root',
-        clang = {
-            extraArgs = {
-                "--target=armv7m-none-eabi",
-                "-isystem/usr/lib/gcc/arm-none-eabi/9.2.1/include/",
-                "-isystem/usr/include/newlib",
-            },
-        }
+    clangd = {
+        lsp_root = project_root,
     },
 },
 ]]

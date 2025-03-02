@@ -1,5 +1,4 @@
-    local utils = require 'projects.utils'
--- local yabs = require 'yabs'
+local utils = require 'projects.utils'
 
 -- ****************************************************************************
 --
@@ -32,13 +31,6 @@ local function run_build(build)
             config.current_build_cancel = task.abortcommand
 
             vim.cmd(task.command)
-        elseif task.executor == 'yabs' then
-            -- if yabs then
-            --     config.current_build_cancel = task.abortcommand
-            --     yabs.run_command(task.command, task.output, task.options or {})
-            -- else
-            --     print "require'yabs' == nil"
-            -- end
         end
     end
 end
@@ -164,13 +156,6 @@ builds = {
         command      = 'Make release',
         abortcommand = 'AbortDispatch'
 
-    },
-    task_name2 = {
-        executor = 'yabs',
-        command = 'gcc main.c -o main',
-        output = 'quickfix',
-        opts = {
-        },
     },
 },
 ]]

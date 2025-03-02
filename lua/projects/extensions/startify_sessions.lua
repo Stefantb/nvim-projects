@@ -50,8 +50,7 @@ end
 function sessions.on_project_open(project)
     close()
 
-    local session_name = project:ext_config('sessions', {}).session_name or project.name
-    -- sessions.current_session_name = session_name
+    local session_name = project:ext_config('sessions', {}).session_name or project.unique_name
 
     if session_name then
         if exists(session_name) then
@@ -80,9 +79,6 @@ end
 
 function sessions.config_example()
     return [[
-'sessions' = {
-    -- session_name = 'defaults to project name',
-},
 ]]
 end
 

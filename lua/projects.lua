@@ -94,6 +94,15 @@ local function ensure_projects_dir()
     return utils.ensure_dir(config.project_dir)
 end
 
+local function ensure_local_project_dir()
+    local path = vim.fn.getcwd() .. '/.nvimproject'
+    return utils.ensure_dir(path)
+end
+
+local function local_project_dir(project)
+    return project.root_dir .. '/.nvimproject'
+end
+
 local function project_path(project_name)
     local local_project = try_find_local_project()
     if local_project and project_name == local_project.project_name then
@@ -101,6 +110,15 @@ local function project_path(project_name)
         return vim.fn.expand(file_path)
     end
     return vim.fn.expand(config.project_dir .. project_name .. '.lua')
+end
+
+local function project_path2(project_name)
+    local local_project = try_find_local_project()
+    if local_project and project_name == local_project.project_name then
+        local file_path = local_project.project_dir .. '/' .. local_project.project_file
+        return { path=vim.fn.expand(file_path), is_local=true }
+    end
+    return { path=vim.fn.expand(config.project_dir .. project_name .. '.lua'), is_local=false }
 end
 
 local function project_persistent_path(project_name)
@@ -191,9 +209,9 @@ local function load_project_from_file(project_name)
         return nil
     end
 
-    local file_path = project_path(project_name)
+    local file_info = project_path2(project_name)
 
-    local ok, project_data = pcall(dofile, file_path)
+    local ok, project_data = pcall(dofile, file_info.path)
 
     if ok == false then
         return nil
@@ -204,13 +222,18 @@ local function load_project_from_file(project_name)
 
         -- set some defaults
         project.name = project_name
-        project.persistent = Persistent:create(project_persistent_path(project_name))
+        project.unique_name = project_name
+        project.is_local = file_info.is_local
+        if project.is_local then
+            project.root_dir = utils.local_project_path(file_info.path)
+            project.unique_name = project.root_dir:gsub('/', '_')
+        end
+        project.persistent = Persistent:create(project_persistent_path(project.unique_name))
 
         if not project.extensions then
             project.extensions = {}
         end
 
-        -- print(vim.inspect(project))
         if is_project_root_ok(project) then
             return project
         end
@@ -219,10 +242,11 @@ local function load_project_from_file(project_name)
 end
 
 local project_template = [[
+-- local utils = require("projects.utils")
+-- local project_root = utils.local_project_path(utils.script_path())
 local M = {
+    -- root_dir not needed if local project
     root_dir = '%s',
-    -- silent = false,
-    -- session_name = 'defaults to project name.'
 
     extensions = {
 %s
@@ -231,11 +255,12 @@ local M = {
 
 function M.on_project_open()
     vim.opt.makeprg = 'make'
+    --vim.cmd('PBuildSetDefault make')
 end
 
 function M.on_project_close()
-    print('Goodbye then.')
 end
+
 return M
 ]]
 
@@ -385,12 +410,15 @@ function M.project_delete(project_name)
     end
 end
 
-function M.project_edit(project_name)
-    if not project_name or project_name == '' then
+function M.project_edit(project_name_)
+    local project_name = project_name_ or ''
+    if not project_name or project_name == ''  and current_project and current_project.name then
         project_name = current_project.name
     end
 
+    P('project_name: ' .. project_name)
     local projects = project_list()
+    P(projects)
 
     if empty(project_name) then
         project_name = M.prompt_selection(projects)
@@ -399,9 +427,14 @@ function M.project_edit(project_name)
     local is_new = not utils.is_in_list(projects, project_name)
 
     if project_name and project_name ~= '' then
-        ensure_projects_dir()
-
-        local projectfile = project_path(project_name)
+        local projectfile = ''
+        if is_new and M.prompt_yes_no('Local Project ? ') then
+            ensure_local_project_dir()
+            projectfile = vim.fn.getcwd() .. '/.nvimproject/' .. project_name .. '_project.lua'
+        else
+            ensure_projects_dir()
+            projectfile = project_path(project_name)
+        end
         vim.cmd('edit ' .. projectfile)
         if is_new then
             local buf = vim.api.nvim_get_current_buf()
