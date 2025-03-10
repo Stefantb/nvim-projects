@@ -388,7 +388,7 @@ function M.project_delete(project_name)
 
     if M.prompt_yes_no('Really delete ' .. project_name) then
         -- close project if currently open
-        if current_project.name == project_name then
+        if M.is_project_open() and current_project.name == project_name then
             M.project_close()
         end
         local project = load_project_from_file(project_name)
