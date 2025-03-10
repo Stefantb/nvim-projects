@@ -71,12 +71,14 @@ end
 
 local function session_path(project)
     local session_name = project:ext_config('sessions', {}).session_name or project.unique_name
-    local session_dir = require('projects').projects_startify_session_dir()
+    -- local session_dir = require('projects').projects_startify_session_dir()
+    local session_dir = vim.fn.expand(vim.fn.stdpath("data") .. "/sessions/")
     return vim.fn.expand(session_dir) .. session_name
 end
 
 function sessions.on_project_open(project)
     sessions.current_session_path = session_path(project)
+    require'projects.utils'.ensure_dir(vim.fn.fnamemodify(sessions.current_session_path, ':h'))
 
     local existed = M.load(sessions.current_session_path)
     if not existed then
