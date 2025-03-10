@@ -132,14 +132,25 @@ end
 -- ****************************************************************************
 -- Project management
 -- ****************************************************************************
-local function project_list()
+---@class Project
+---@field name? string
+---@field path? string
+
+---List all the projects available
+---@return Project[]
+local function project_list_()
     local dir = ensure_projects_dir()
 
     local projects = {}
 
     local local_project = try_find_local_project()
     if local_project then
-        projects[#projects + 1] = local_project.project_name
+        projects[#projects + 1] = {
+            name = local_project.project_name,
+            path = local_project.project_dir .. '/' .. local_project.project_file,
+            project_dir = local_project.project_dir,
+            is_local = true,
+        }
     end
 
     local scan = vim.loop.fs_scandir(dir)
@@ -152,9 +163,22 @@ local function project_list()
 
             local striped_name = name:match '(.+)%.lua$'
             if striped_name and striped_name ~= '' then
-                projects[#projects + 1] = striped_name
+                projects[#projects + 1] = {
+                    name = striped_name,
+                    path = dir .. name,
+                    dir = dir,
+                    is_local = false,
+                }
             end
         end
+    end
+    return projects
+end
+
+local function project_list()
+    local projects = project_list_()
+    for i, project in ipairs(projects) do
+        projects[i] = project.name
     end
     return projects
 end
@@ -451,15 +475,8 @@ function M.show_current_project()
     print(vim.inspect(current_project))
 end
 
-function M.projects_startify_list()
-    local list = {}
-    for i, project in ipairs(project_list()) do
-        list[i] = {
-            line = project,
-            cmd = "lua require'projects'.project_open('" .. project .. "')",
-        }
-    end
-    return list
+function M.projects_list()
+    return project_list_()
 end
 
 return M
